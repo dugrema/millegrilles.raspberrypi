@@ -12,7 +12,7 @@ from threading import Thread
 #   - Adafruit package Adafruit_DHT
 class ThermometreAdafruitGPIO:
 
-    def __init__(self, no_senseur, pin=18, sensor=Adafruit_DHT.AM2302):
+    def __init__(self, no_senseur, pin=24, sensor=Adafruit_DHT.AM2302):
         self._no_senseur = no_senseur
         self._pin = pin
         self._sensor = sensor
@@ -21,7 +21,7 @@ class ThermometreAdafruitGPIO:
         self._thread = None
 
     def lire(self):
-        humidite, temperature = Adafruit_DHT.read_retry(self.sensor, self.pin)
+        humidite, temperature = Adafruit_DHT.read_retry(self._sensor, self._pin)
 
         print("Humidite: %s, Temperature: %s" % (humidite, temperature))
 
