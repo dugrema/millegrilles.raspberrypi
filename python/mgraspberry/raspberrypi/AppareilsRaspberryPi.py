@@ -32,7 +32,11 @@ class ThermometreAdafruitGPIO:
             'humidite': round(humidite, 1)
         }
 
-        self._callback_soumettre(dict_message)
+        # Verifier que les valeurs ne sont pas erronees
+        if 0 <= humidite <= 100 and -50 < temperature < 50:
+            self._callback_soumettre(dict_message)
+        else:
+            print("Erreur de lecture DHT erronnee, valeurs hors limites: %s" % str(dict_message))
 
     def start(self, callback_soumettre):
         self._callback_soumettre = callback_soumettre

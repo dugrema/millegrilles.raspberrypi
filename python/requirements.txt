@@ -1,5 +1,5 @@
 pika==0.12
-mongo==0.2
+pymongo
 bson
 Adafruit_DHT
 
