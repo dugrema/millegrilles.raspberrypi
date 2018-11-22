@@ -1,5 +1,6 @@
 import time
 import RF24
+import traceback
 
 from threading import Thread
 
@@ -65,7 +66,7 @@ class HubNRF24L:
                     time.sleep(0.05)
 
                 if self.radio.available():
-                    receive_payload = self.radio.read(11)
+                    receive_payload = bytes(self.radio.read(11))
                     print("HubNRF24L: We got data, length %d" % (len(receive_payload)))
 
                     resultat_dict = ProtocoleSenseursPassifsNRF24l.convertir(receive_payload)
@@ -81,6 +82,7 @@ class HubNRF24L:
 
             except Exception as e:
                 print("HubNRF24L: Error processing radio message %s" % str(e))
+                traceback.print_exc()
 
     # Close all connections and the radio
     def close(self):

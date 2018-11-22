@@ -5,7 +5,8 @@ import time
 class testAM2302:
 
     def __init__(self):
-        self._reader = ThermometreAdafruitGPIO(no_senseur=0, intervalle_lectures=5)
+        # Note: garage pin=24, cuisine=18
+        self._reader = ThermometreAdafruitGPIO(no_senseur=0, pin=18, intervalle_lectures=5)
         self._reader._callback_soumettre = self.callback
         self._producteur = ProducteurTransactionSenseursPassifs()
         self._producteur.connecter()
