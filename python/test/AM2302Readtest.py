@@ -1,4 +1,4 @@
-from mgraspberry.raspberrypi.AppareilsRaspberryPi import ThermometreAdafruitGPIO
+from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
 from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
 import time
 
