@@ -85,7 +85,7 @@ class HubNRF24L:
                 traceback.print_exc()
 
     # Close all connections and the radio
-    def close(self):
+    def fermer(self):
         self.active = False
         try:
             self.radio.stopListening()
