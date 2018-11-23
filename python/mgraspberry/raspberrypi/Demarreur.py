@@ -11,10 +11,14 @@ from millegrilles.dao.MessageDAO import PikaDAO
 from millegrilles.dao.DocumentDAO import MongoDAO
 from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
 
+from millegrilles.util.Daemon import Daemon
 
-class DemarreurRaspberryPi:
+class DemarreurRaspberryPi(Daemon):
 
-    def __init__(self):
+    def __init__(self, pidfile='/run/mg-demarreur-rpi.pid', stdin='/dev/null', stdout='/var/log/mg-demarreur-rpi.log', stderr='/var/log/mg-demarreur-rpi.err'):
+        # Call superclass init
+        Daemon.__init__(self, pidfile, stdin, stdout, stderr)
+
         self._parser = argparse.ArgumentParser(description="Demarrer des appareils MilleGrilles sur Raspberry Pi")
         self._args = None
 
@@ -36,6 +40,10 @@ class DemarreurRaspberryPi:
 
     def parse(self):
         self._parser.add_argument(
+            'command', type=str, nargs=1, choices=['start', 'stop', 'restart'],
+            help="Commande a executer: start, stop, restart"
+        )
+        self._parser.add_argument(
             '--lcddoc', type=str, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
@@ -50,7 +58,40 @@ class DemarreurRaspberryPi:
 
         self._args = self._parser.parse_args()
 
-    def setup(self):
+    def executer_daemon_command(self):
+        daemon_command = self._args.command[0]
+        print("Commande: %s" % daemon_command)
+        if daemon_command == 'start':
+            self.start()
+        elif daemon_command == 'stop':
+            self.stop()
+        elif daemon_command == 'restart':
+            self.restart()
+
+    def start(self):
+        Daemon.start(self)
+
+    def stop(self):
+        Daemon.stop(self)
+
+    def restart(self):
+        Daemon.restart(self)
+
+    def run(self):
+        print("Demarrage Daemon")
+        self.setup_modules()
+
+        if self._chargement_reussi:
+            self._stop_event.clear()  # Permettre de bloquer sur le stop_event.
+
+        while not self._stop_event.is_set():
+            # Faire verifications de fonctionnement, watchdog, etc...
+
+            # Sleep
+            self._stop_event.wait(10)
+        print("Fin execution Daemon")
+
+    def setup_modules(self):
         # Charger la configuration et les DAOs
         self._configuration.loadEnvironment()
         self._message_dao = PikaDAO(self._configuration)
@@ -82,16 +123,6 @@ class DemarreurRaspberryPi:
             except Exception as erreur_nrf24:
                 print("Erreur chargement AM2302 sur pin %d: %s" % (self._args.am2302[1], str(erreur_nrf24)))
                 traceback.print_exc()
-
-    def run_monitor(self):
-        if self._chargement_reussi:
-            self._stop_event.clear()  # Permettre de bloquer sur le stop_event.
-
-        while not self._stop_event.is_set():
-            # Faire verifications de fonctionnement, watchdog, etc...
-
-            # Sleep
-            self._stop_event.wait(10)
 
     def fermer(self):
         self._stop_event.set()
@@ -149,27 +180,29 @@ class DemarreurRaspberryPi:
 
 
 # **** MAIN ****
-def exit_gracefully(signum, frame):
-    print("Arret de DemarreurRaspberryPi signum: %d" % signum)
-    demarreur.fermer()
+#def exit_gracefully(signum, frame):
+#    print("Arret de DemarreurRaspberryPi signum: %d" % signum)
+#    demarreur.fermer()
 
 
 def main():
     # Faire le relai des signaux OS
-    signal.signal(signal.SIGINT, exit_gracefully)
-    signal.signal(signal.SIGTERM, exit_gracefully)
+#    signal.signal(signal.SIGINT, exit_gracefully)
+#    signal.signal(signal.SIGTERM, exit_gracefully)
 
     try:
         demarreur.parse()
-        demarreur.setup()
-        demarreur.run_monitor()
+        demarreur.executer_daemon_command()
+#        demarreur.setup()
+#        demarreur.run_monitor()
     except Exception as e:
         print("Erreur %s" % e)
         traceback.print_exc()
         demarreur.print_help()
     finally:
-        print("Main termine, on ferme les modules")
-        demarreur.fermer()
+        print("Main termine")
+#        print("Main termine, on ferme les modules")
+#        demarreur.fermer()
 
 
 if __name__=="__main__":
