@@ -1,8 +1,6 @@
 # Module qui permet de demarrer les appareils sur un Raspberry Pi
 import traceback
 import argparse
-import signal
-import time
 
 from threading import Event
 
@@ -13,9 +11,16 @@ from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPa
 
 from millegrilles.util.Daemon import Daemon
 
+
 class DemarreurRaspberryPi(Daemon):
 
-    def __init__(self, pidfile='/run/mg-demarreur-rpi.pid', stdin='/dev/null', stdout='/var/log/mg-demarreur-rpi.log', stderr='/var/log/mg-demarreur-rpi.err'):
+    def __init__(
+            self,
+            pidfile='/run/mg-demarreur-rpi.pid',
+            stdin='/dev/null',
+            stdout='/var/log/mg-demarreur-rpi.log',
+            stderr='/var/log/mg-demarreur-rpi.err'
+    ):
         # Call superclass init
         Daemon.__init__(self, pidfile, stdin, stdout, stderr)
 
@@ -180,31 +185,18 @@ class DemarreurRaspberryPi(Daemon):
 
 
 # **** MAIN ****
-#def exit_gracefully(signum, frame):
-#    print("Arret de DemarreurRaspberryPi signum: %d" % signum)
-#    demarreur.fermer()
-
-
 def main():
-    # Faire le relai des signaux OS
-#    signal.signal(signal.SIGINT, exit_gracefully)
-#    signal.signal(signal.SIGTERM, exit_gracefully)
-
     try:
         demarreur.parse()
         demarreur.executer_daemon_command()
-#        demarreur.setup()
-#        demarreur.run_monitor()
     except Exception as e:
         print("Erreur %s" % e)
         traceback.print_exc()
         demarreur.print_help()
     finally:
         print("Main termine")
-#        print("Main termine, on ferme les modules")
-#        demarreur.fermer()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     demarreur = DemarreurRaspberryPi()
     main()
