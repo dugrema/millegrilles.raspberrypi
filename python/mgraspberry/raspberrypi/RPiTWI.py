@@ -102,8 +102,8 @@ class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassi
         self._mapping_lignes_lcd = [LcdHandler.LCD_LINE_1, LcdHandler.LCD_LINE_2]
 
     def start(self):
-        super().start()  # Demarre plusieurs thread pour effectuer le travail (charger documents, etc)
         self._lcd_handler.initialise()
+        super().start()  # Demarre plusieurs thread pour effectuer le travail (charger documents, etc)
 
     def fermer(self):
         super().fermer()

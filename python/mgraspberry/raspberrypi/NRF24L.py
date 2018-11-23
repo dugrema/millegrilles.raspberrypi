@@ -49,6 +49,7 @@ class HubNRF24L:
 
     # Starts thread and runs the process
     def start(self, callback_soumettre):
+        self.open_radio()
         self._callback_soumettre = callback_soumettre
         self.thread = Thread(target=self.run)
         self.thread.start()
