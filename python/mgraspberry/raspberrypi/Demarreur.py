@@ -5,7 +5,7 @@ import argparse
 from threading import Event
 
 from millegrilles.dao.Configuration import TransactionConfiguration
-from millegrilles.dao.MessageDAO import PikaDAO
+from millegrilles.dao.MessageDAO import PikaDAO, ExceptionConnectionFermee
 from millegrilles.dao.DocumentDAO import MongoDAO
 from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
 
@@ -39,6 +39,8 @@ class DemarreurRaspberryPi(Daemon):
         self._chargement_reussi = False  # Vrai si au moins un module a ete charge
         self._stop_event = Event()
         self._stop_event.set()  # Set initiale, faire clear pour activer le processus
+
+        self._backlog_messages = []  # Utilise pour stocker les message qui n'ont pas ete transmis
 
     def print_help(self):
         self._parser.print_help()
@@ -91,6 +93,7 @@ class DemarreurRaspberryPi(Daemon):
 
         while not self._stop_event.is_set():
             # Faire verifications de fonctionnement, watchdog, etc...
+            self.traiter_backlog_messages()
 
             # Sleep
             self._stop_event.wait(10)
@@ -182,6 +185,35 @@ class DemarreurRaspberryPi(Daemon):
         self._am2302 = ThermometreAdafruitGPIO(no_senseur=no_senseur, pin=pin)
         self._am2302.start(self._producteur_transaction.transmettre_lecture_senseur)
         self._chargement_reussi = True
+
+    def transmettre_lecture_callback(self, dict_lecture):
+        try:
+            if not self._message_dao.in_error:
+                self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
+            else:
+                self._backlog_messages.append(dict_lecture)
+        except ExceptionConnectionFermee as e:
+            # Erreur, la connexion semble fermee. On va tenter une reconnexion
+            self._backlog_messages.append(dict_lecture)
+            self._message_dao.enter_error_state()
+
+    def traiter_backlog_messages(self):
+        if len(self._backlog_messages) > 0:
+            # Tenter de reconnecter a RabbitMQ
+            if self._message_dao.in_error:
+                self._message_dao.connecter()
+
+            # La seule facon de confirmer la connexion et d'envoyer un message
+            # On tente de passer le backlog en remettant le message dans la liste en cas d'echec
+            message = self._backlog_messages.pop()
+            try:
+                while message is not None:
+                    self.transmettre_lecture_callback(message)
+                    message = self._backlog_messages.pop()
+            except Exception as e:
+                print("Erreur traitement backlog, on push le message: %s" % str(e))
+                self._backlog_messages.append(message)
+                traceback.print_exc()
 
 
 # **** MAIN ****
