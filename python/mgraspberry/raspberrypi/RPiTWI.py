@@ -1,16 +1,10 @@
 # Module pour appareils TWI (I2C) sur le RaspberryPi
 
 import time
-import datetime
-import logging
-from threading import Thread
+from mgdomaines.appareils.AffichagesPassifs import AfficheurSenseurPassifTemperatureHumiditePression
 
-import smbus
+import smbus  # Installer sur RPi (bus TWI)
 
-from millegrilles.dao.Configuration import TransactionConfiguration
-from millegrilles.dao.DocumentDAO import MongoDAO
-from mgdomaines.appareils.SenseursPassifs import SenseursPassifsConstantes
-from millegrilles import Constantes
 
 class LcdHandler:
     # Define some device parameters
@@ -100,116 +94,22 @@ class LcdHandler:
             self.lcd_byte(ord(message[i]), LcdHandler.LCD_CHR)
 
 
-class DataHandler(Thread):
-    location_mapping = dict()
-    location_mapping["Cuisine"] = "Int"
-    location_mapping["Patio"] = "Ext"
+class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassifTemperatureHumiditePression):
 
-    def __init__(self, configuration=None, document_dao=None):
-        self._configuration = configuration
-        self._document_dao = document_dao
-        self._document_donnees = None  # Document qui est mis a jour par Mongo
-        self._document_configuration = None  # Document de configuration de l'ecran
-        self._thread = None
+    def __init__(self, configuration, document_dao, document_ids, intervalle_secs=30):
+        super().__init__(configuration, document_dao, document_ids, intervalle_secs)
         self._lcd_handler = LcdHandler()
-        self._active = False
 
-    # Starts thread and runs the process
     def start(self):
-        # Verifier s'il faut charger la configuration et le DAO (si la classe est executee independamment)
-        if self._configuration is None:
-            self._configuration = TransactionConfiguration()
-            self._configuration.loadEnvironment()
-
-        if self._document_dao is None:
-            self._document_dao = MongoDAO(self._configuration)
-            self._document_dao.connecter()
-
-        # Demarrer ecran LCD
+        super().start()  # Demarre plusieurs thread pour effectuer le travail (charger documents, etc)
         self._lcd_handler.initialise()
 
-        self._thread = Thread(target=self.run)
-        self._active = True
-        self._thread.start()
-        print("HubNRF24L: nRF24L thread started successfully")
+    def fermer(self):
+        super().fermer()
+        self._lcd_handler.close()
 
-    def charger_document_donnees(self):
-        collection = self._document_dao.get_collection(SenseursPassifsConstantes.COLLECTION_NOM)
-        select = {
-            SenseursPassifsConstantes.TRANSACTION_NOEUD: 'cuisine.maple.mdugre.info',
-            Constantes.DOCUMENT_INFODOC_LIBELLE: SenseursPassifsConstantes.LIBELLE_DOCUMENT_NOEUD
-        }
-        resultat = collection.find_one(select)
-        if resultat is not None:
-            self._document_dao = resultat
+    def maj_affichage(self, lignes_affichage):
+        super().maj_affichage(lignes_affichage)
 
-    def close(self):
-        self._active = False
-
-    def preparer_tendance(self, location):
-        location_data = self.data.get(location)
-        if location_data is not None:
-            tendance = self.dao.get_changement_pression(location)
-            location_data["tendance"] = tendance
-
-    def run(self):
-        while self.active:
-            lecture_int = self.dataHandler.data.get("Cuisine")
-            if lecture_int is not None and len(lecture_int) > 0:
-                logging.debug("Lecture int RUN: %s" % lecture_int)
-                self.afficher_lecture(lecture_int, LcdHandler.LCD_LINE_1)
-
-            lecture_ext = self.dataHandler.data.get("Patio")
-            if lecture_ext is not None and len(lecture_ext) > 0:
-                logging.debug("Lecture ext RUN: %s" % lecture_ext)
-                self.afficher_lecture(lecture_ext, LcdHandler.LCD_LINE_2)
-
-            # Attente pour affichage
-            time.sleep(10)
-
-            # Afficher pression atmospherique
-            if lecture_ext is not None:
-                self.afficher_pression(lecture_ext)
-            time.sleep(5)
-
-            # Afficher heure courante
-            self.afficher_date(LcdHandler.LCD_LINE_1)
-            compteur = 0
-            while compteur < 5:
-                self.afficher_heure(LcdHandler.LCD_LINE_2)
-                compteur = compteur + 1
-                time.sleep(1)
-
-    def afficher_lecture(self, lecture, ligne):
-        logging.debug("afficher_lecture: %s" % lecture)
-        try:
-            contenu = "{location}:{temperature:2.1f}C/{humidite:2.0f}%".format(**lecture)
-            #  print contenu
-            self._lcd_handler.lcd_string(contenu, ligne)
-        except Exception as e:
-            logging.exception("Erreur afficher_lecture")
-            logging.error("----")
-
-    def afficher_pression(self, lecture):
-        logging.debug("afficher_pression: %s" % lecture)
-        try:
-            if lecture.get("pression") is not None:
-                contenu = "Press: {pression:3.1f}kPa{tendance}".format(**lecture)
-                self._lcd_handler.lcd_string(contenu, lcdHandler.LCD_LINE_1)
-        except Exception as e:
-            logging.exception("Erreur afficher_pression")
-            logging.error("----")
-
-    # Afficher date courante
-    def afficher_date(self, ligne):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts)
-        datestring = timestamp.strftime('%Y-%m-%d')
-        self._lcd_handler.lcd_string(datestring, ligne)
-
-    # Afficher heure courante
-    def afficher_heure(self, ligne):
-        ts = time.time()
-        timestamp = datetime.datetime.fromtimestamp(ts)
-        timestring = timestamp.strftime('%H:%M:%S')
-        self._lcd_handler.lcd_string(timestring, ligne)
+        self._lcd_handler.lcd_string(lignes_affichage[0], LcdHandler.LCD_LINE_1)
+        self._lcd_handler.lcd_string(lignes_affichage[1], LcdHandler.LCD_LINE_2)
