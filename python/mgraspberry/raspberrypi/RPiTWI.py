@@ -99,6 +99,7 @@ class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassi
     def __init__(self, configuration, document_dao, document_ids, intervalle_secs=30):
         super().__init__(configuration, document_dao, document_ids, intervalle_secs)
         self._lcd_handler = LcdHandler()
+        self._mapping_lignes_lcd = [LcdHandler.LCD_LINE_1, LcdHandler.LCD_LINE_2]
 
     def start(self):
         super().start()  # Demarre plusieurs thread pour effectuer le travail (charger documents, etc)
@@ -111,5 +112,5 @@ class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassi
     def maj_affichage(self, lignes_affichage):
         super().maj_affichage(lignes_affichage)
 
-        self._lcd_handler.lcd_string(lignes_affichage[0], LcdHandler.LCD_LINE_1)
-        self._lcd_handler.lcd_string(lignes_affichage[1], LcdHandler.LCD_LINE_2)
+        for no_ligne in range(0, min(len(lignes_affichage), len(self._mapping_lignes_lcd))):
+            self._lcd_handler.lcd_string(lignes_affichage[no_ligne], self._mapping_lignes_lcd[no_ligne])
