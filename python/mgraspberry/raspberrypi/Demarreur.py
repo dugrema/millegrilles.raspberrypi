@@ -6,6 +6,10 @@ import time
 
 from threading import Event
 
+from millegrilles.dao.Configuration import TransactionConfiguration
+from millegrilles.dao.MessageDAO import PikaDAO
+from millegrilles.dao.DocumentDAO import MongoDAO
+
 
 class DemarreurRaspberryPi:
 
@@ -16,6 +20,10 @@ class DemarreurRaspberryPi:
         self._affichage_lcd = None
         self._hub_nrf24l01 = None
         self._am2302 = None
+
+        self._configuration = TransactionConfiguration()
+        self._message_dao = None
+        self._document_dao = None
 
         self._chargement_reussi = False  # Vrai si au moins un module a ete charge
         self._stop_event = Event()
@@ -41,6 +49,16 @@ class DemarreurRaspberryPi:
         self._args = self._parser.parse_args()
 
     def setup(self):
+        # Charger la configuration et les DAOs
+        self._configuration.loadEnvironment()
+        self._message_dao = PikaDAO(self._configuration)
+        self._document_dao = MongoDAO(self._configuration)
+
+        # Se connecter aux ressources
+        self._message_dao.connecter()
+        self._document_dao.connecter()
+
+        # Verifier les parametres
         if self._args.lcd:
             try:
                 self.inclure_lcd()
@@ -74,6 +92,12 @@ class DemarreurRaspberryPi:
 
     def fermer(self):
         self._stop_event.set()
+
+        try:
+            self._message_dao.deconnecter()
+            self._document_dao.deconnecter()
+        except Exception as edao:
+            print("Erreur deconnexion DAOs: %s" % str(edao))
 
         if self._hub_nrf24l01 is not None:
             try:
