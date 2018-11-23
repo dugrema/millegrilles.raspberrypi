@@ -9,6 +9,7 @@ from threading import Event
 from millegrilles.dao.Configuration import TransactionConfiguration
 from millegrilles.dao.MessageDAO import PikaDAO
 from millegrilles.dao.DocumentDAO import MongoDAO
+from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
 
 
 class DemarreurRaspberryPi:
@@ -24,6 +25,7 @@ class DemarreurRaspberryPi:
         self._configuration = TransactionConfiguration()
         self._message_dao = None
         self._document_dao = None
+        self._producteur_transaction = None
 
         self._chargement_reussi = False  # Vrai si au moins un module a ete charge
         self._stop_event = Event()
@@ -42,8 +44,8 @@ class DemarreurRaspberryPi:
             help="Active le hub nRF24L01"
         )
         self._parser.add_argument(
-            '--am2302', type=int, nargs=1,
-            required=False, help="Active le senseur AM2302 sur pin en parametre"
+            '--am2302', type=int, nargs=2,
+            required=False, help="Active le senseur (numero en parametre) AM2302 sur pin (en parametre)"
         )
 
         self._args = self._parser.parse_args()
@@ -57,6 +59,7 @@ class DemarreurRaspberryPi:
         # Se connecter aux ressources
         self._message_dao.connecter()
         self._document_dao.connecter()
+        self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
 
         # Verifier les parametres
         if self._args.lcd:
@@ -77,7 +80,7 @@ class DemarreurRaspberryPi:
             try:
                 self.inclure_am2302()
             except Exception as erreur_nrf24:
-                print("Erreur chargement AM2302 sur pin %d: %s" % (self._args.am2302[0], str(erreur_nrf24)))
+                print("Erreur chargement AM2302 sur pin %d: %s" % (self._args.am2302[1], str(erreur_nrf24)))
                 traceback.print_exc()
 
     def run_monitor(self):
@@ -120,20 +123,28 @@ class DemarreurRaspberryPi:
     def inclure_lcd(self):
         print("Activer LCD")
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
-        self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes()
+        self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
+            self._configuration,
+            self._document_dao,
+            ['5bef321b82cc2cb5ab0e33c2', '5bef323482cc2cb5ab0e995d']
+        )
+        self._affichage_lcd.start()
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):
         print("Activer nRF24L01")
         from mgraspberry.raspberrypi.NRF24L import HubNRF24L
         self._hub_nrf24l01 = HubNRF24L()
+        self._hub_nrf24l01.start(self._producteur_transaction.transmettre_lecture_senseur)
         self._chargement_reussi = True
 
     def inclure_am2302(self):
-        pin = self._args.am2302[0]
+        no_senseur = self._args.am2302[0]
+        pin = self._args.am2302[1]
         print("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
-        self._am2302 = ThermometreAdafruitGPIO(pin=pin)
+        self._am2302 = ThermometreAdafruitGPIO(no_senseur=no_senseur, pin=pin)
+        self._am2302.start(self._producteur_transaction.transmettre_lecture_senseur)
         self._chargement_reussi = True
 
 
