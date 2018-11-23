@@ -36,7 +36,7 @@ class DemarreurRaspberryPi:
 
     def parse(self):
         self._parser.add_argument(
-            '--lcd', action="store_true", required=False,
+            '--lcddoc', type=str, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
@@ -62,7 +62,7 @@ class DemarreurRaspberryPi:
         self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
 
         # Verifier les parametres
-        if self._args.lcd:
+        if self._args.lcddoc:
             try:
                 self.inclure_lcd()
             except Exception as erreur_lcd:
@@ -126,7 +126,7 @@ class DemarreurRaspberryPi:
         self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
             self._configuration,
             self._document_dao,
-            ['5bef321b82cc2cb5ab0e33c2', '5bef323482cc2cb5ab0e995d']
+            self._args.lcddoc
         )
         self._affichage_lcd.start()
         self._chargement_reussi = True
