@@ -16,8 +16,6 @@ def main():
         traceback.print_exc()
         print("!!! ******************************")
         demarreur.print_help()
-    finally:
-        print("Main termine")
 
 
 if __name__ == "__main__":
