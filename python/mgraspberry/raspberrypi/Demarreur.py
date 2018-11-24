@@ -82,7 +82,6 @@ class DemarreurRaspberryPi(Daemon):
 
     def executer_daemon_command(self):
         daemon_command = self._args.command[0]
-        print("Commande: %s" % daemon_command)
         if daemon_command == 'start':
             self.start()
         elif daemon_command == 'stop':
@@ -266,8 +265,6 @@ def main():
         traceback.print_exc()
         print("!!! ******************************")
         demarreur.print_help()
-    finally:
-        print("Main termine")
 
 
 if __name__ == "__main__":
