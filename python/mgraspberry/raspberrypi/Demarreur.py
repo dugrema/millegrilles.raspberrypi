@@ -106,7 +106,7 @@ class DemarreurRaspberryPi(Daemon):
         self._document_dao = MongoDAO(self._configuration)
 
         # Se connecter aux ressources
-        self._message_dao.connecter()
+        # self._message_dao.connecter()  # La connexion se fait apres 10 secondes via backlog
         self._document_dao.connecter()
         self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
 
@@ -174,7 +174,7 @@ class DemarreurRaspberryPi(Daemon):
         print("Activer nRF24L01")
         from mgraspberry.raspberrypi.NRF24L import HubNRF24L
         self._hub_nrf24l01 = HubNRF24L()
-        self._hub_nrf24l01.start(self._producteur_transaction.transmettre_lecture_senseur)
+        self._hub_nrf24l01.start(self.transmettre_lecture_callback)
         self._chargement_reussi = True
 
     def inclure_am2302(self):
@@ -183,7 +183,7 @@ class DemarreurRaspberryPi(Daemon):
         print("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
         self._am2302 = ThermometreAdafruitGPIO(no_senseur=no_senseur, pin=pin)
-        self._am2302.start(self._producteur_transaction.transmettre_lecture_senseur)
+        self._am2302.start(self.transmettre_lecture_callback)
         self._chargement_reussi = True
 
     def transmettre_lecture_callback(self, dict_lecture):
@@ -191,6 +191,7 @@ class DemarreurRaspberryPi(Daemon):
             if not self._message_dao.in_error:
                 self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
             else:
+                print("Message ajoute au backlog: %s" % str(dict_lecture))
                 self._backlog_messages.append(dict_lecture)
         except ExceptionConnectionFermee as e:
             # Erreur, la connexion semble fermee. On va tenter une reconnexion
@@ -207,9 +208,11 @@ class DemarreurRaspberryPi(Daemon):
             # On tente de passer le backlog en remettant le message dans la liste en cas d'echec
             message = self._backlog_messages.pop()
             try:
-                while message is not None:
-                    self.transmettre_lecture_callback(message)
+                self._producteur_transaction.transmettre_lecture_senseur(message)
+                while len(self._backlog_messages) > 0:
                     message = self._backlog_messages.pop()
+                    self._producteur_transaction.transmettre_lecture_senseur(message)
+                print("Traitement backlog complete")
             except Exception as e:
                 print("Erreur traitement backlog, on push le message: %s" % str(e))
                 self._backlog_messages.append(message)
