@@ -27,6 +27,8 @@ class DemarreurRaspberryPi(Daemon):
         self._parser = argparse.ArgumentParser(description="Demarrer des appareils MilleGrilles sur Raspberry Pi")
         self._args = None
 
+        self._intervalle_entretien = None
+        self._max_backlog = None
         self._affichage_lcd = None
         self._hub_nrf24l01 = None
         self._am2302 = None
@@ -62,6 +64,19 @@ class DemarreurRaspberryPi(Daemon):
             '--am2302', type=int, nargs=2,
             required=False, help="Active le senseur (numero en parametre) AM2302 sur pin (en parametre)"
         )
+        self._parser.add_argument(
+            '--maint', type=int, nargs=1, default=60,
+            required=False, help="Change le nombre de secondes entre les verifications de connexions"
+        )
+        self._parser.add_argument(
+            '--backlog', type=int, nargs=1, default=1000,
+            required=False, help="Change le nombre messages maximum qui peuvent etre conserves dans le backlog"
+        )
+        self._parser.add_argument(
+            '--noconnect', action="store_true", required=False,
+            help="Effectue la connexion aux serveurs plus tard plutot qu'au demarrage."
+        )
+
 
         self._args = self._parser.parse_args()
 
@@ -94,9 +109,10 @@ class DemarreurRaspberryPi(Daemon):
         while not self._stop_event.is_set():
             # Faire verifications de fonctionnement, watchdog, etc...
             self.traiter_backlog_messages()
+            self.verifier_connexion_document()
 
             # Sleep
-            self._stop_event.wait(10)
+            self._stop_event.wait(self._intervalle_entretien)
         print("Fin execution Daemon")
 
     def setup_modules(self):
@@ -106,11 +122,16 @@ class DemarreurRaspberryPi(Daemon):
         self._document_dao = MongoDAO(self._configuration)
 
         # Se connecter aux ressources
-        # self._message_dao.connecter()  # La connexion se fait apres 10 secondes via backlog
-        self._document_dao.connecter()
+        if not self._args.noconnect:
+            self._message_dao.connecter()
+            self._document_dao.connecter()
+
         self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
 
         # Verifier les parametres
+        self._intervalle_entretien = self._args.maint[0]
+        self._max_backlog = self._args.backlog[0]
+
         if self._args.lcddoc:
             try:
                 self.inclure_lcd()
@@ -192,12 +213,17 @@ class DemarreurRaspberryPi(Daemon):
                 self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
             else:
                 print("Message ajoute au backlog: %s" % str(dict_lecture))
-                self._backlog_messages.append(dict_lecture)
+                if len(self._backlog_messages) < 1000:
+                    self._backlog_messages.append(dict_lecture)
+                else:
+                    print("Backlog > 1000, message perdu: %s" % str(dict_lecture))
+
         except ExceptionConnectionFermee as e:
             # Erreur, la connexion semble fermee. On va tenter une reconnexion
             self._backlog_messages.append(dict_lecture)
             self._message_dao.enter_error_state()
 
+    ''' Verifie s'il y a un backlog, tente de reconnecter au message_dao et transmettre au besoin. '''
     def traiter_backlog_messages(self):
         if len(self._backlog_messages) > 0:
             # Tenter de reconnecter a RabbitMQ
@@ -216,6 +242,16 @@ class DemarreurRaspberryPi(Daemon):
             except Exception as e:
                 print("Erreur traitement backlog, on push le message: %s" % str(e))
                 self._backlog_messages.append(message)
+                traceback.print_exc()
+
+    ''' Verifie la connexion au document_dao, reconnecte au besoin. '''
+    def verifier_connexion_document(self):
+        if not self._document_dao.est_enligne():
+            try:
+                self._document_dao.connecter()
+                print("DemarreurRaspberryPi: Connexion a Mongo re-etablie")
+            except Exception as ce:
+                print("DemarreurRaspberryPi: Erreur reconnexion Mongo: %s" % str(ce))
                 traceback.print_exc()
 
 
