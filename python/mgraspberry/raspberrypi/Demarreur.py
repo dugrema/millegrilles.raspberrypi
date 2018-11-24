@@ -129,8 +129,8 @@ class DemarreurRaspberryPi(Daemon):
         self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
 
         # Verifier les parametres
-        self._intervalle_entretien = self._args.maint[0]
-        self._max_backlog = self._args.backlog[0]
+        self._intervalle_entretien = self._args.maint
+        self._max_backlog = self._args.backlog
 
         if self._args.lcddoc:
             try:
@@ -261,8 +261,10 @@ def main():
         demarreur.parse()
         demarreur.executer_daemon_command()
     except Exception as e:
-        print("Erreur %s" % e)
+        print("!!! ******************************")
+        print("MAIN: Erreur %s" % str(e))
         traceback.print_exc()
+        print("!!! ******************************")
         demarreur.print_help()
     finally:
         print("Main termine")
