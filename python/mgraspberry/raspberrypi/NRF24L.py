@@ -68,11 +68,11 @@ class HubNRF24L:
 
                 if self.radio.available():
                     receive_payload = bytes(self.radio.read(11))
-                    print("HubNRF24L: We got data, length %d" % (len(receive_payload)))
+                    # print("HubNRF24L: We got data, length %d" % (len(receive_payload)))
 
                     resultat_dict = ProtocoleSenseursPassifsNRF24l.convertir(receive_payload)
                     if resultat_dict is not None:
-                        print("HubNRF24L: Recu: %s" % resultat_dict)
+                        # print("HubNRF24L: Recu: %s" % resultat_dict)
 
                         try:
                             self._callback_soumettre(resultat_dict)
