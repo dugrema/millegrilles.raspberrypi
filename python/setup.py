@@ -1,18 +1,15 @@
 from setuptools import setup
 
 setup(
-    name='MilleGrilles.domaines.python',
-    version='v0.3',
+    name='MilleGrillesRPi',
+    version='v0.1',
     packages=[
-        'millegrilles.dao',
-        'millegrilles.processus',
-        'millegrilles.rapport',
-        'millegrilles.transaction',
-        'millegrilles.util'
+        'mgraspberry',
+        'mgraspberry.raspberrypi'
     ],
     url='',
     license='',
     author='Mathieu Dugre',
     author_email='mail@mdugre.info',
-    description=''
+    description='Modules MilleGrilles pour Raspberry Pi'
 )
