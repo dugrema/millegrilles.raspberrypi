@@ -1,0 +1,34 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:        mg-appareils
+# Required-Start:  $network $ntp $rc.local $docker
+# Required-Stop:   $network $docker
+# Default-Start:   2 3 4 5
+# Default-Stop:  0 1 6
+# Short-Description: Start mg-appareils.sh
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin
+CMD="/usr/local/bin/mg-appareils.sh"
+
+export NOCONNECT=on
+
+case $1 in
+	start)
+#		log_daemon_msg "Demarrage mgSenseurs" "mgSenseurs"
+  		$CMD start
+		;;
+	stop)
+#		log_daemon_msg "Arret mgSenseurs" "mgSenseurs"
+                $CMD stop
+  		;;
+	restart)
+#		log_daemon_msg "Redemarrage mgSenseurs" "mgSenseurs"
+                $CMD restart
+  		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 2
+		;;
+esac

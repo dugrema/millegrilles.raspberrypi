@@ -14,9 +14,21 @@ source $FICHIER_CONFIG
 PARAMS=""
 
 # Ajouter parametre pour senseur AM2302 au besoin
-if [ ! -z GARAGE_NO_SENSUER ]; then
+if [ ! -z $SENSEUR_NO ]; then
   PARAMS="$PARAMS --am2302 $SENSEUR_NO $SENSEUR_PIN "
 fi
 
-echo "Commande: $SCRIPT_PYTHON $PARAMS $COMMAND"
-$SCRIPT_PYTHON $PARAMS $COMMAND
+if [ ! -z $NRF24 ]; then
+  PARAMS="$PARAMS --nrf24"
+fi
+
+if [ ! -z "$LCDDOC" ]; then
+  PARAMS="$PARAMS --lcddoc $LCDDOC"
+fi 
+
+if [ ! -z $NOCONNECT ]; then
+  PARAMS="$PARAMS --noconnect"
+fi
+
+echo "Commande: $SCRIPT_PYTHON $COMMAND $PARAMS"
+$SCRIPT_PYTHON $COMMAND $PARAMS 
