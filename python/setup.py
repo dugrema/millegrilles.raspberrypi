@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='MilleGrillesRPi',
-    version='v0.3',
+    version='v0.4',
     packages=[
         'mgraspberry',
         'mgraspberry.raspberrypi'
