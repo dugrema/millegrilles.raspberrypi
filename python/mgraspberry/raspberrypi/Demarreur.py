@@ -113,7 +113,11 @@ class DemarreurRaspberryPi(Daemon):
 
         while not self._stop_event.is_set():
             # Faire verifications de fonctionnement, watchdog, etc...
-            self.traiter_backlog_messages()
+            try:
+                self.traiter_backlog_messages()
+            except Exception:
+                logger.exception("Erreur traitement backlog de messages")
+
             self.verifier_connexion_document()
 
             # Sleep
@@ -233,7 +237,10 @@ class DemarreurRaspberryPi(Daemon):
         if len(self._backlog_messages) > 0:
             # Tenter de reconnecter a RabbitMQ
             if self._message_dao.in_error:
-                self._message_dao.connecter()
+                try:
+                    self._message_dao.connecter()
+                except:
+                    logger.exception("Erreur connexion MQ")
 
             # La seule facon de confirmer la connexion et d'envoyer un message
             # On tente de passer le backlog en remettant le message dans la liste en cas d'echec
