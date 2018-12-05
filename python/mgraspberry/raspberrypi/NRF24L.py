@@ -1,10 +1,12 @@
 import time
 import RF24
-import traceback
+import logging
 
 from threading import Thread
 
 from mgdomaines.appareils.ProtocoleSenseurs import ProtocoleSenseursPassifsNRF24l
+
+logger = logging.getLogger(__name__)
 
 
 # Dependences
@@ -53,7 +55,7 @@ class HubNRF24L:
         self._callback_soumettre = callback_soumettre
         self.thread = Thread(target=self.run)
         self.thread.start()
-        print("HubNRF24L: nRF24L thread started successfully")
+        logger.info("HubNRF24L: nRF24L thread started successfully")
 
     def run(self):
 
@@ -76,14 +78,13 @@ class HubNRF24L:
 
                         try:
                             self._callback_soumettre(resultat_dict)
-                        except:
-                            print("HubNRF24L: Error sending callback message")
+                        except Exception:
+                            logger.exception("HubNRF24L: Error sending callback message")
                     else:
-                        print("HubNRF24L: Erreur lecture (convertisseur)")
+                        logger.warning("HubNRF24L: Erreur lecture (convertisseur)")
 
             except Exception as e:
-                print("HubNRF24L: Error processing radio message %s" % str(e))
-                traceback.print_exc()
+                logger.exception("HubNRF24L: Error processing radio message")
 
     # Close all connections and the radio
     def fermer(self):
@@ -92,4 +93,4 @@ class HubNRF24L:
             self.radio.stopListening()
             self.radio = None
         except Exception as e:
-            print("HubNRF24L: Error closing radio: %s" % str(e))
+            logger.warn("HubNRF24L: Error closing radio: %s" % str(e))

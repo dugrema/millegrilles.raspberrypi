@@ -1,9 +1,12 @@
 # Module pour appareils TWI (I2C) sur le RaspberryPi
 
 import time
+import logging
 from mgdomaines.appareils.AffichagesPassifs import AfficheurSenseurPassifTemperatureHumiditePression
 
 import smbus  # Installer sur RPi (bus TWI)
+
+logger = logging.getLogger(__name__)
 
 
 class LcdHandler:

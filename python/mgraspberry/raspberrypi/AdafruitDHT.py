@@ -2,9 +2,12 @@
 import sys
 import traceback
 import time
+import logging
 import Adafruit_DHT  # https://github.com/adafruit/Adafruit_Python_DHT.git
 
 from threading import Thread, Event
+
+logger = logging.getLogger(__name__)
 
 
 # Thermometre AM2302 connecte sur une pin GPIO
@@ -38,7 +41,7 @@ class ThermometreAdafruitGPIO:
         if 0 <= humidite <= 100 and -50 < temperature < 50:
             self._callback_soumettre(dict_message)
         else:
-            print("ThermometreAdafruitGPIO: Erreur de lecture DHT erronnee, valeurs hors limites: %s" % str(dict_message))
+            logger.warning("ThermometreAdafruitGPIO: Erreur de lecture DHT erronnee, valeurs hors limites: %s" % str(dict_message))
 
     def start(self, callback_soumettre):
         self._callback_soumettre = callback_soumettre
@@ -47,7 +50,7 @@ class ThermometreAdafruitGPIO:
         # Demarrer thread
         self._thread = Thread(target=self.run)
         self._thread.start()
-        print("ThermometreAdafruitGPIO: thread started successfully")
+        logger.info("ThermometreAdafruitGPIO: thread started successfully")
 
     def fermer(self):
         self._stop_event.set()
@@ -57,8 +60,7 @@ class ThermometreAdafruitGPIO:
             try:
                 self.lire()
             except:
-                print("ThermometreAdafruitGPIO: Erreur lecture AM2302")
-                traceback.print_exc(file=sys.stdout)
+                logger.exception("ThermometreAdafruitGPIO: Erreur lecture AM2302")
             finally:
                 self._stop_event.wait(self._intervalle_lectures)
 

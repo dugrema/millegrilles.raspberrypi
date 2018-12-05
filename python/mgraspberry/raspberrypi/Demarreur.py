@@ -1,6 +1,7 @@
 # Module qui permet de demarrer les appareils sur un Raspberry Pi
 import traceback
 import argparse
+import logging
 
 from threading import Event
 
@@ -10,6 +11,8 @@ from millegrilles.dao.DocumentDAO import MongoDAO
 from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
 
 from millegrilles.util.Daemon import Daemon
+
+logger = logging.getLogger(__name__)
 
 
 class DemarreurRaspberryPi(Daemon):
@@ -23,6 +26,9 @@ class DemarreurRaspberryPi(Daemon):
     ):
         # Call superclass init
         Daemon.__init__(self, pidfile, stdin, stdout, stderr)
+
+        logging.getLogger().setLevel(logging.WARNING)
+        logging.getLogger('mgraspberry').setLevel(logging.INFO)
 
         self._parser = argparse.ArgumentParser(description="Demarrer des appareils MilleGrilles sur Raspberry Pi")
         self._args = None
