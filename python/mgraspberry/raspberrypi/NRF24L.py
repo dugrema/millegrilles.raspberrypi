@@ -4,7 +4,7 @@ import logging
 
 from threading import Thread
 
-from mgdomaines.appareils.ProtocoleSenseurs import ProtocoleSenseursPassifsNRF24l
+from mgdomaines.appareils import ProtocoleSenseursPassifsNRF24l
 
 logger = logging.getLogger(__name__)
 

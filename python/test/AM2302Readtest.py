@@ -1,5 +1,5 @@
 from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
-from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
+from mgdomaines.appareils import ProducteurTransactionSenseursPassifs
 import time
 
 class testAM2302:

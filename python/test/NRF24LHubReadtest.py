@@ -1,5 +1,5 @@
 from mgraspberry.raspberrypi.NRF24L import HubNRF24L
-from mgdomaines.appareils.SenseursPassifs import ProducteurTransactionSenseursPassifs
+from mgdomaines.appareils import ProducteurTransactionSenseursPassifs
 import time
 import traceback
 
