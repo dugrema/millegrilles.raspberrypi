@@ -64,19 +64,6 @@ class ApcupsdCollector:
         with open(self._config['pipe_path'], 'w') as pipe:
             pipe.write('FERMER')
 
-    # def connecter(self):
-    #     self._producteur_transactions.connecter()
-    #     self.thread_events.start()  # Demarrer thread
-    #
-    # def deconnecter(self):
-    #     self._producteur_transactions.deconnecter()
-    #     self._lecture_evenements_actif = False
-    #     with open(self._config['pipe_path'], 'w') as pipe:
-    #         pipe.write('FERMER')
-    #
-    # def get_default_config(self):
-    #     return self._config
-
     def get_data(self):
         # Get the data via TCP stream
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -214,6 +201,8 @@ class ApcupsdCollector:
         return contenu
 
     def transmettre_evenements(self):
+        """ Transmet les evenements nouveaux depuis le demarrage du programme. """
+
         evenements = self.get_evenements()
         dernier_evenement = evenements[-1]
         for evenement in evenements:
@@ -224,9 +213,17 @@ class ApcupsdCollector:
                 self._transmettre_evenement(evenement, inclure_etat=inclure_etat)
 
     def transmettre_etat(self):
+        """ Utiliser pour lire et transmettre l'etat courant du UPS """
+
         self._transmettre_evenement({'date': datetime.datetime.now(tz=datetime.timezone.utc)})
 
     def _transmettre_evenement(self, evenement, inclure_etat=True):
+        """
+        Utiliser pour transmettre un evenement du UPS
+
+        :param inclure_etat: Mettre true pour inclure l'etat courant du UPS.
+        """
+
         contenu_message = evenement.copy()
         no_senseur = self._config['no_senseur']
 
