@@ -6,7 +6,7 @@ class TestApc:
 
     def __init__(self):
         self.apc = ApcupsdCollector(no_senseur=4, pipe_path='/home/mathieu/pipe', hostname='192.168.2.5')
-        self.apc.connecter()
+        self.apc.start(self.callback_transmettre)
 
     def test_data(self):
         self.apc.collect()
@@ -27,6 +27,9 @@ class TestApc:
     def deconnecter(self):
         self.apc.deconnecter()
 
+    def callback_transmettre(self, message):
+        print("Message a transmettre: %s" % str(message))
+
 def tester():
     logging.basicConfig(level=logging.INFO)
     logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
@@ -39,7 +42,9 @@ def tester():
     # test_apc.transmettre_evenements()
     # test_apc.transmettre_etat()
 
-    time.sleep(15)
+    for i in range(1, 10):
+        test_apc.transmettre_etat()
+        time.sleep(120)
 
     test_apc.deconnecter()
 

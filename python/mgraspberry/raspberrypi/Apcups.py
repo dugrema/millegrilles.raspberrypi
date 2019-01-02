@@ -6,7 +6,6 @@ import socket
 from struct import pack
 import re
 import time
-import pytz
 import datetime
 from dateutil.parser import parse
 import os
@@ -45,27 +44,38 @@ class ApcupsdCollector:
                         'NUMXFERS', 'TONBATT', 'MAXLINEV', 'MINLINEV',
                         'OUTPUTV', 'ITEMP', 'LINEFREQ', 'CUMONBATT', ],
         }
-        self._dernier_evenement = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=-2)
-        self._producteur_transactions = ProducteurTransactionSenseursPassifs()
+        self._dernier_evenement = datetime.datetime.now(tz=datetime.timezone.utc)
+        self._callback_soumettre = None
+        # self._producteur_transactions = ProducteurTransactionSenseursPassifs()
 
         self.thread_events = Thread(target=self.ecouter_evenements)
-
         self._lecture_evenements_actif = False
 
         self._logger = logging.getLogger("%s.%s" % (__name__, self.__class__.__name__))
 
-    def connecter(self):
-        self._producteur_transactions.connecter()
-        self.thread_events.start()  # Demarrer thread
+    def start(self, callback_soumettre):
+        """ Demarre les thread data et evenements """
 
-    def deconnecter(self):
-        self._producteur_transactions.deconnecter()
+        self._callback_soumettre = callback_soumettre
+        self.thread_events.start()  # Demarrer thread evenements
+
+    def fermer(self):
         self._lecture_evenements_actif = False
         with open(self._config['pipe_path'], 'w') as pipe:
             pipe.write('FERMER')
 
-    def get_default_config(self):
-        return self._config
+    # def connecter(self):
+    #     self._producteur_transactions.connecter()
+    #     self.thread_events.start()  # Demarrer thread
+    #
+    # def deconnecter(self):
+    #     self._producteur_transactions.deconnecter()
+    #     self._lecture_evenements_actif = False
+    #     with open(self._config['pipe_path'], 'w') as pipe:
+    #         pipe.write('FERMER')
+    #
+    # def get_default_config(self):
+    #     return self._config
 
     def get_data(self):
         # Get the data via TCP stream
@@ -235,4 +245,5 @@ class ApcupsdCollector:
             # Convertir certains elements en format standard
             contenu_message['millivolt'] = contenu_message['BATTV']
 
-        self._producteur_transactions.transmettre_lecture_senseur(contenu_message)
+        # self._producteur_transactions.transmettre_lecture_senseur(contenu_message)
+        self._callback_soumettre(contenu_message)
