@@ -6,26 +6,33 @@ import socket
 from struct import pack
 import re
 import time
+import pytz
 import datetime
 from dateutil.parser import parse
 import os
 import errno
 import logging
 
+from millegrilles.domaines.SenseursPassifs import ProducteurTransactionSenseursPassifs, SenseursPassifsConstantes
+
+
+class ApcupsConstantes:
+
+    MAP_EVENEMENTS = {
+        '9': 'COMMUNICATION_PERDUE',
+        '6': 'FERMETURE_APCUPSD',
+        'R': 'DEMARRAGE_APCUPSD',
+        '*': 'PANNE',
+        '5': 'SUR_BATTERIES',
+        'G': 'RETOUR_SECTEUR',
+        '@': 'SUR_SECTEUR'
+    }
+
 
 class ApcupsdCollector:
     """ Copie de https://github.com/python-diamond/Diamond/blob/master/src/collectors/apcupsd/apcupsd.py """
 
     def __init__(self):
-        self._config = None
-        self._dernier_evenement = None
-
-        self._logger = logging.getLogger("%s.%s" % (__name__, self.__class__.__name__))
-
-    def get_default_config(self):
-        """
-        Returns the default collector settings
-        """
         self._config = {
             'path':     'apcupsd',
             'hostname': 'localhost',
@@ -34,6 +41,18 @@ class ApcupsdCollector:
                         'NUMXFERS', 'TONBATT', 'MAXLINEV', 'MINLINEV',
                         'OUTPUTV', 'ITEMP', 'LINEFREQ', 'CUMONBATT', ],
         }
+        self._dernier_evenement = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=-2)
+        self._producteur_transactions = ProducteurTransactionSenseursPassifs()
+
+        self._logger = logging.getLogger("%s.%s" % (__name__, self.__class__.__name__))
+
+    def connecter(self):
+        self._producteur_transactions.connecter()
+
+    def deconnecter(self):
+        self._producteur_transactions.deconnecter()
+
+    def get_default_config(self):
         return self._config
 
     def get_data(self):
@@ -53,7 +72,7 @@ class ApcupsdCollector:
         s.close()
         return data
 
-    def get_events(self):
+    def get_evenements(self):
         # Get the data via TCP stream
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self._config['hostname'], int(self._config['port'])))
@@ -78,8 +97,16 @@ class ApcupsdCollector:
             matches = re.search(regex_metric, str(event))
             if matches:
                 self._logger.debug("Commande: %s, Date: %s, Event: %s" % (matches.group(1), matches.group(2), matches.group(3)))
+                etat_ups = ApcupsConstantes.MAP_EVENEMENTS[matches.group(1)]
+                if not etat_ups:
+                    etat_ups = matches.group(1)
                 date = parse(matches.group(2))
-                contenu.append((matches.group(1), date, matches.group(3)))
+                message = matches.group(3)
+                contenu.append({
+                    'etat_ups': etat_ups,
+                    'date': date,
+                    'message': message
+                })
 
         return contenu
 
@@ -100,22 +127,6 @@ class ApcupsdCollector:
                         self._logger.debug("Ferme")
                         break
                     self._logger.debug("Contenu: %s" % str(line))
-
-    def evenements(self, data):
-        self._logger.debug("Events data: %s" % data)
-        split_bytes = data.split(b'\n\x00')
-        self._logger.debug("Split bytes events: %s" % str(split_bytes))
-
-        regex_metric = re.compile('(.?)([0-9-: ]{25})\s{2}(.*)')
-        contenu = []
-        for event in split_bytes:
-            matches = re.search(regex_metric, str(event))
-            if matches:
-                self._logger.debug("Commande: %s, Date: %s, Event: %s" % (matches.group(1), matches.group(2), matches.group(3)))
-                date = parse(matches.group(2))
-                contenu.append((matches.group(1), date, matches.group(3)))
-
-        return contenu
 
     def collect(self):
         metrics = {}
@@ -156,9 +167,42 @@ class ApcupsdCollector:
                 contenu[metric] = value
             elif metric in ['TIMELEFT']:
                 contenu[metric] = value * 60.0  # Convertir minutes en secondes
+            elif metric in ['BATTV', 'LINEV']:
+                contenu[metric] = value * 1000.0  # Convertir en mV
             else:
                 contenu[metric] = raw[metric]
 
         self._logger.debug("Metriques: %s" % str(contenu))
 
         return contenu
+
+    def transmettre_evenements(self):
+        evenements = self.get_evenements()
+        dernier_evenement = evenements[-1]
+        for evenement in evenements:
+            inclure_etat = (evenement == dernier_evenement)  # Inclure etat actuel pour le dernier evenement
+            # Verifier si l'evenement a deja ete transmis
+            if self._dernier_evenement <= evenement['date']:
+                self._dernier_evenement = evenement['date']
+                self._transmettre_evenement(evenement, inclure_etat=inclure_etat)
+
+    def _transmettre_evenement(self, evenement, inclure_etat=True):
+        contenu_message = evenement.copy()
+        no_senseur = 4
+
+        contenu_message[SenseursPassifsConstantes.TRANSACTION_ID_SENSEUR] = no_senseur
+
+        # Convertir l'element date -> temps_lect
+        contenu_message[SenseursPassifsConstantes.TRANSACTION_DATE_LECTURE] = int(contenu_message['date'].timestamp())
+        del (contenu_message['date'])
+
+        if inclure_etat:
+            # On va chercher l'etat courand du UPS
+            etat = self.collect()
+            self._logger.debug("Etat actuel: %s" % str(etat))
+            contenu_message.update(etat)
+
+            # Convertir certains elements en format standard
+            contenu_message['millivolt'] = contenu_message['BATTV']
+
+        self._producteur_transactions.transmettre_lecture_senseur(contenu_message)
