@@ -9,13 +9,14 @@ from millegrilles.dao.Configuration import TransactionConfiguration
 from millegrilles.dao.MessageDAO import PikaDAO, ExceptionConnectionFermee
 from millegrilles.dao.DocumentDAO import MongoDAO
 from millegrilles.domaines.SenseursPassifs import ProducteurTransactionSenseursPassifs
+from millegrilles.noeuds.Noeud import DemarreurNoeud
 
 from millegrilles.util.Daemon import Daemon
 
 logger = logging.getLogger(__name__)
 
 
-class DemarreurRaspberryPi(Daemon):
+class DemarreurRaspberryPi(DemarreurNoeud):
 
     def __init__(
             self,
@@ -25,39 +26,19 @@ class DemarreurRaspberryPi(Daemon):
             stderr='/var/log/mg-demarreur-rpi.err'
     ):
         # Call superclass init
-        Daemon.__init__(self, pidfile, stdin, stdout, stderr)
+        super(DemarreurNoeud, self).__init__(pidfile, stdin, stdout, stderr)
 
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger('mgraspberry').setLevel(logging.INFO)
 
-        self._parser = argparse.ArgumentParser(description="Demarrer des appareils MilleGrilles sur Raspberry Pi")
-        self._args = None
-
-        self._intervalle_entretien = None
-        self._max_backlog = None
         self._affichage_lcd = None
         self._hub_nrf24l01 = None
         self._am2302 = None
 
-        self._configuration = TransactionConfiguration()
-        self._message_dao = None
-        self._document_dao = None
-        self._producteur_transaction = None
-
-        self._chargement_reussi = False  # Vrai si au moins un module a ete charge
-        self._stop_event = Event()
-        self._stop_event.set()  # Set initiale, faire clear pour activer le processus
-
         self._backlog_messages = []  # Utilise pour stocker les message qui n'ont pas ete transmis
 
-    def print_help(self):
-        self._parser.print_help()
-
     def parse(self):
-        self._parser.add_argument(
-            'command', type=str, nargs=1, choices=['start', 'stop', 'restart'],
-            help="Commande a executer: start, stop, restart"
-        )
+        # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
             '--lcddoc', type=str, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
@@ -70,77 +51,14 @@ class DemarreurRaspberryPi(Daemon):
             '--am2302', type=int, nargs=2,
             required=False, help="Active le senseur (numero en parametre) AM2302 sur pin (en parametre)"
         )
-        self._parser.add_argument(
-            '--maint', type=int, nargs=1, default=60,
-            required=False, help="Change le nombre de secondes entre les verifications de connexions"
-        )
-        self._parser.add_argument(
-            '--backlog', type=int, nargs=1, default=1000,
-            required=False, help="Change le nombre messages maximum qui peuvent etre conserves dans le backlog"
-        )
-        self._parser.add_argument(
-            '--noconnect', action="store_true", required=False,
-            help="Effectue la connexion aux serveurs plus tard plutot qu'au demarrage."
-        )
 
-
-        self._args = self._parser.parse_args()
-
-    def executer_daemon_command(self):
-        daemon_command = self._args.command[0]
-        if daemon_command == 'start':
-            self.start()
-        elif daemon_command == 'stop':
-            self.stop()
-        elif daemon_command == 'restart':
-            self.restart()
-
-    def start(self):
-        Daemon.start(self)
-
-    def stop(self):
-        Daemon.stop(self)
-
-    def restart(self):
-        Daemon.restart(self)
-
-    def run(self):
-        print("Demarrage Daemon")
-        self.setup_modules()
-
-        if self._chargement_reussi:
-            self._stop_event.clear()  # Permettre de bloquer sur le stop_event.
-
-        while not self._stop_event.is_set():
-            # Faire verifications de fonctionnement, watchdog, etc...
-            try:
-                self.traiter_backlog_messages()
-            except Exception:
-                logger.exception("Erreur traitement backlog de messages")
-
-            self.verifier_connexion_document()
-
-            # Sleep
-            self._stop_event.wait(self._intervalle_entretien)
-        print("Fin execution Daemon")
+        # Completer le parsing via superclasse
+        super().parse()
 
     def setup_modules(self):
-        # Charger la configuration et les DAOs
-        self._configuration.loadEnvironment()
-        self._message_dao = PikaDAO(self._configuration)
-        self._document_dao = MongoDAO(self._configuration)
+        super().setup_modules()
 
-        # Se connecter aux ressources
-        if not self._args.noconnect:
-            self._message_dao.connecter()
-            self._document_dao.connecter()
-
-        self._producteur_transaction = ProducteurTransactionSenseursPassifs(self._configuration, self._message_dao)
-
-        # Verifier les parametres
-        self._intervalle_entretien = self._args.maint
-        self._max_backlog = self._args.backlog
-
+        # Charger modules specifiques au raspberrypi.
         if self._args.lcddoc:
             try:
                 self.inclure_lcd()
