@@ -1,13 +1,11 @@
 from mgraspberry.raspberrypi.Apcups import ApcupsdCollector
 import logging
+import time
 
 class TestApc:
 
     def __init__(self):
-        self.apc = ApcupsdCollector()
-        config = self.apc.get_default_config()
-        config['hostname'] = '192.168.2.5'
-
+        self.apc = ApcupsdCollector(no_senseur=4, pipe_path='/home/mathieu/pipe', hostname='192.168.2.5')
         self.apc.connecter()
 
     def test_data(self):
@@ -23,6 +21,12 @@ class TestApc:
     def transmettre_evenements(self):
         self.apc.transmettre_evenements()
 
+    def transmettre_etat(self):
+        self.apc.transmettre_etat()
+
+    def deconnecter(self):
+        self.apc.deconnecter()
+
 def tester():
     logging.basicConfig(level=logging.INFO)
     logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
@@ -32,7 +36,12 @@ def tester():
     # test_apc.test_data()
     # test_apc.test_events()
     # test_apc.ecouter_evenements()
-    test_apc.transmettre_evenements()
+    # test_apc.transmettre_evenements()
+    # test_apc.transmettre_etat()
+
+    time.sleep(15)
+
+    test_apc.deconnecter()
 
 
 # Demarrer le test

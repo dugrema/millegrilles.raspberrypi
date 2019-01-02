@@ -13,6 +13,8 @@ import os
 import errno
 import logging
 
+from threading import Thread
+
 from millegrilles.domaines.SenseursPassifs import ProducteurTransactionSenseursPassifs, SenseursPassifsConstantes
 
 
@@ -32,11 +34,13 @@ class ApcupsConstantes:
 class ApcupsdCollector:
     """ Copie de https://github.com/python-diamond/Diamond/blob/master/src/collectors/apcupsd/apcupsd.py """
 
-    def __init__(self):
+    def __init__(self, no_senseur, hostname='localhost', port=3551, pipe_path='/run/mg_apcupsd_messages'):
         self._config = {
+            'no_senseur': no_senseur,
             'path':     'apcupsd',
-            'hostname': 'localhost',
-            'port': 3551,
+            'hostname': hostname,
+            'port': port,
+            'pipe_path': pipe_path,
             'metrics': ['LINEV', 'LOADPCT', 'BCHARGE', 'TIMELEFT', 'BATTV',
                         'NUMXFERS', 'TONBATT', 'MAXLINEV', 'MINLINEV',
                         'OUTPUTV', 'ITEMP', 'LINEFREQ', 'CUMONBATT', ],
@@ -44,13 +48,21 @@ class ApcupsdCollector:
         self._dernier_evenement = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=-2)
         self._producteur_transactions = ProducteurTransactionSenseursPassifs()
 
+        self.thread_events = Thread(target=self.ecouter_evenements)
+
+        self._lecture_evenements_actif = False
+
         self._logger = logging.getLogger("%s.%s" % (__name__, self.__class__.__name__))
 
     def connecter(self):
         self._producteur_transactions.connecter()
+        self.thread_events.start()  # Demarrer thread
 
     def deconnecter(self):
         self._producteur_transactions.deconnecter()
+        self._lecture_evenements_actif = False
+        with open(self._config['pipe_path'], 'w') as pipe:
+            pipe.write('FERMER')
 
     def get_default_config(self):
         return self._config
@@ -112,21 +124,36 @@ class ApcupsdCollector:
 
     def ecouter_evenements(self):
         # Ouvrir un pipe utilise pour recevoir l'etat de APCUPSD
-        pipe_fichier = '/home/mathieu/pipe'
+        pipe_fichier = self._config['pipe_path']
+        self._logger.info("Demarrage thread ecoute evenements sur %s" % pipe_fichier)
+
         try:
             os.mkfifo(pipe_fichier)
         except OSError as oe:
             if oe.errno != errno.EEXIST:
                 raise
 
-        while True:
-            with open(pipe_fichier) as pipe:
-                while True:
-                    line = pipe.read()
+        self._lecture_evenements_actif = True
+
+        while self._lecture_evenements_actif:
+            with open(pipe_fichier, 'r') as pipe:
+                while self._lecture_evenements_actif:
+                    line = pipe.read().strip()
+                    self._logger.debug("Pipe event: %s" % line)
+                    if line == 'FERMER':
+                        self._lecture_evenements_actif = False
+                    elif line in ApcupsConstantes.MAP_EVENEMENTS.values():
+                        self.transmettre_evenements()
+                    else:
+                        self._logger.warning("Commande UPS inconne: %s" % line)
+
                     if len(line) == 0:
-                        self._logger.debug("Ferme")
-                        break
+                        self._logger.debug("Reouvrir le pipe")
+                        break  # Va reouvrir le pipe et bloquer
+
                     self._logger.debug("Contenu: %s" % str(line))
+
+        self._logger.info("Fermeture thread lecture evenements sur pipe %s" % pipe_fichier)
 
     def collect(self):
         metrics = {}
@@ -186,9 +213,12 @@ class ApcupsdCollector:
                 self._dernier_evenement = evenement['date']
                 self._transmettre_evenement(evenement, inclure_etat=inclure_etat)
 
+    def transmettre_etat(self):
+        self._transmettre_evenement({'date': datetime.datetime.now(tz=datetime.timezone.utc)})
+
     def _transmettre_evenement(self, evenement, inclure_etat=True):
         contenu_message = evenement.copy()
-        no_senseur = 4
+        no_senseur = self._config['no_senseur']
 
         contenu_message[SenseursPassifsConstantes.TRANSACTION_ID_SENSEUR] = no_senseur
 
