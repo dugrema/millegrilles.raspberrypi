@@ -8,7 +8,7 @@ from threading import Event
 from millegrilles.dao.Configuration import TransactionConfiguration
 from millegrilles.dao.MessageDAO import PikaDAO, ExceptionConnectionFermee
 from millegrilles.dao.DocumentDAO import MongoDAO
-from mgdomaines.appareils import ProducteurTransactionSenseursPassifs
+from millegrilles.domaines.SenseursPassifs import ProducteurTransactionSenseursPassifs
 
 from millegrilles.util.Daemon import Daemon
 
