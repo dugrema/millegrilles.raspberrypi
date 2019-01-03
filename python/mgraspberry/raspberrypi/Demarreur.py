@@ -26,7 +26,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             stderr='/var/log/mg-demarreur-rpi.err'
     ):
         # Call superclass init
-        super(DemarreurNoeud, self).__init__(pidfile, stdin, stdout, stderr)
+        super().__init__(pidfile, stdin, stdout, stderr)
 
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger('mgraspberry').setLevel(logging.INFO)
