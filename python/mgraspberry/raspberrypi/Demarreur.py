@@ -84,7 +84,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._stop_event.set()
 
         try:
-            self._message_dao.deconnecter()
+            self.contexte.message_dao.deconnecter()
             self._document_dao.deconnecter()
         except Exception as edao:
             print("Erreur deconnexion DAOs: %s" % str(edao))
@@ -136,7 +136,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def transmettre_lecture_callback(self, dict_lecture):
         try:
-            if not self._message_dao.in_error:
+            if not self.contexte.message_dao.in_error:
                 self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
             else:
                 print("Message ajoute au backlog: %s" % str(dict_lecture))
@@ -148,15 +148,15 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         except ExceptionConnectionFermee as e:
             # Erreur, la connexion semble fermee. On va tenter une reconnexion
             self._backlog_messages.append(dict_lecture)
-            self._message_dao.enter_error_state()
+            self.contexte.message_dao.enter_error_state()
 
     ''' Verifie s'il y a un backlog, tente de reconnecter au message_dao et transmettre au besoin. '''
     def traiter_backlog_messages(self):
         if len(self._backlog_messages) > 0:
             # Tenter de reconnecter a RabbitMQ
-            if self._message_dao.in_error:
+            if self.contexte.message_dao.in_error:
                 try:
-                    self._message_dao.connecter()
+                    self.contexte.message_dao.connecter()
                 except:
                     logger.exception("Erreur connexion MQ")
 
@@ -176,9 +176,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     ''' Verifie la connexion au document_dao, reconnecte au besoin. '''
     def verifier_connexion_document(self):
-        if not self._document_dao.est_enligne():
+        if not self.contexte.document_dao.est_enligne():
             try:
-                self._document_dao.connecter()
+                self.contexte.document_dao.connecter()
                 print("DemarreurRaspberryPi: Connexion a Mongo re-etablie")
             except Exception as ce:
                 print("DemarreurRaspberryPi: Erreur reconnexion Mongo: %s" % str(ce))
