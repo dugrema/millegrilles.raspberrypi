@@ -99,8 +99,8 @@ class LcdHandler:
 
 class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassifTemperatureHumiditePression):
 
-    def __init__(self, configuration, document_dao, document_ids, intervalle_secs=30):
-        super().__init__(configuration, document_dao, document_ids, intervalle_secs)
+    def __init__(self, contexte, document_ids, intervalle_secs=30):
+        super().__init__(contexte, document_ids, intervalle_secs)
         self._lcd_handler = LcdHandler()
         self._mapping_lignes_lcd = [LcdHandler.LCD_LINE_1, LcdHandler.LCD_LINE_2]
 

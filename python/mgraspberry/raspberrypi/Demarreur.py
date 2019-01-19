@@ -111,8 +111,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         print("Activer LCD")
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
         self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
-            self._configuration,
-            self._document_dao,
+            self.contexte,
             self._args.lcddoc
         )
         self._affichage_lcd.start()
