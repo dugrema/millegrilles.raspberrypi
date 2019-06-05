@@ -175,7 +175,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     ''' Verifie la connexion au document_dao, reconnecte au besoin. '''
     def verifier_connexion_document(self):
-        if not self.contexte.document_dao.est_enligne():
+        if self.contexte.document_dao is not None and not self.contexte.document_dao.est_enligne():
             try:
                 self.contexte.document_dao.connecter()
                 print("DemarreurRaspberryPi: Connexion a Mongo re-etablie")
