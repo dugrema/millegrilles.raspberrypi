@@ -40,7 +40,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
-            '--lcddoc', type=str, nargs='+', required=False,
+            '--lcdsenseur', type=int, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
@@ -112,7 +112,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
         self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
             self.contexte,
-            self._args.lcddoc
+            self._args.lcdsenseur
         )
         self._affichage_lcd.start()
         self._chargement_reussi = True
