@@ -4,6 +4,7 @@ import argparse
 import logging
 
 from threading import Event
+from pika.exceptions import ChannelClosed
 
 from millegrilles.dao.Configuration import TransactionConfiguration
 from millegrilles.dao.MessageDAO import PikaDAO, ExceptionConnectionFermee
@@ -30,6 +31,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger('mgraspberry').setLevel(logging.INFO)
+        self._logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
 
         self._affichage_lcd = None
         self._hub_nrf24l01 = None
@@ -40,7 +42,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
-            '--lcdsenseur', type=int, nargs='+', required=False,
+            '--lcdsenseurs', type=int, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
@@ -59,7 +61,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         super().setup_modules(init_document=True)
 
         # Charger modules specifiques au raspberrypi.
-        if self._args.lcddoc:
+        if self._args.lcdsenseurs:
             try:
                 self.inclure_lcd()
             except Exception as erreur_lcd:
@@ -112,7 +114,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
         self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
             self.contexte,
-            self._args.lcdsenseur
+            self._args.lcdsenseurs
         )
         self._affichage_lcd.start()
         self._chargement_reussi = True
@@ -148,6 +150,12 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             # Erreur, la connexion semble fermee. On va tenter une reconnexion
             self._backlog_messages.append(dict_lecture)
             self.contexte.message_dao.enter_error_state()
+            
+        except ChannelClosed as cc:
+            self._logger.exception("Channel closed", cc)
+            self._backlog_messages.append(dict_lecture)
+            self.contexte.message_dao.enter_error_state()
+            
 
     ''' Verifie s'il y a un backlog, tente de reconnecter au message_dao et transmettre au besoin. '''
     def traiter_backlog_messages(self):
