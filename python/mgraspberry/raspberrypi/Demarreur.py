@@ -58,7 +58,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         super().parse()
 
     def setup_modules(self):
-        super().setup_modules(init_document=True)
+        super().setup_modules(init_document=False)
 
         # Charger modules specifiques au raspberrypi.
         if self._args.lcdsenseurs:
