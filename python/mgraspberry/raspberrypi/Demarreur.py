@@ -137,7 +137,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def transmettre_lecture_callback(self, dict_lecture):
         try:
-            if not self.contexte.message_dao.in_error:
+            if not self.contexte.message_dao._in_error:
                 self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
             else:
                 print("Message ajoute au backlog: %s" % str(dict_lecture))
