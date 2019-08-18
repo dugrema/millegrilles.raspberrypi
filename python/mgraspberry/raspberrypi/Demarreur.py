@@ -181,16 +181,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
                 self._backlog_messages.append(message)
                 traceback.print_exc()
 
-    ''' Verifie la connexion au document_dao, reconnecte au besoin. '''
-    def verifier_connexion_document(self):
-        if self.contexte.document_dao is not None and not self.contexte.document_dao.est_enligne():
-            try:
-                self.contexte.document_dao.connecter()
-                print("DemarreurRaspberryPi: Connexion a Mongo re-etablie")
-            except Exception as ce:
-                print("DemarreurRaspberryPi: Erreur reconnexion Mongo: %s" % str(ce))
-                traceback.print_exc()
-
 
 # **** MAIN ****
 def main():
