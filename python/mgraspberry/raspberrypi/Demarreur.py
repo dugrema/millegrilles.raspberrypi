@@ -161,7 +161,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def traiter_backlog_messages(self):
         if len(self._backlog_messages) > 0:
             # Tenter de reconnecter a RabbitMQ
-            if self.contexte.message_dao.in_error:
+            if self.contexte.message_dao._in_error:
                 try:
                     self.contexte.message_dao.connecter()
                 except:
