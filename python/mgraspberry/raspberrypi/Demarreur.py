@@ -37,8 +37,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._hub_nrf24l01 = None
         self._am2302 = None
 
-        self._backlog_messages = []  # Utilise pour stocker les message qui n'ont pas ete transmis
-
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
@@ -58,7 +56,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         super().parse()
 
     def setup_modules(self):
-        super().setup_modules(init_document=False)
+        super().setup_modules()
 
         # Charger modules specifiques au raspberrypi.
         if self._args.lcdsenseurs:
@@ -83,13 +81,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
                 traceback.print_exc()
 
     def fermer(self):
-        self._stop_event.set()
-
-        try:
-            self.contexte.message_dao.deconnecter()
-            self._document_dao.deconnecter()
-        except Exception as edao:
-            print("Erreur deconnexion DAOs: %s" % str(edao))
+        super().fermer()
 
         if self._hub_nrf24l01 is not None:
             try:
@@ -134,52 +126,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._am2302 = ThermometreAdafruitGPIO(no_senseur=no_senseur, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)
         self._chargement_reussi = True
-
-    def transmettre_lecture_callback(self, dict_lecture):
-        try:
-            if not self.contexte.message_dao._in_error:
-                self._producteur_transaction.transmettre_lecture_senseur(dict_lecture)
-            else:
-                print("Message ajoute au backlog: %s" % str(dict_lecture))
-                if len(self._backlog_messages) < 1000:
-                    self._backlog_messages.append(dict_lecture)
-                else:
-                    print("Backlog > 1000, message perdu: %s" % str(dict_lecture))
-
-        except ExceptionConnectionFermee as e:
-            # Erreur, la connexion semble fermee. On va tenter une reconnexion
-            self._backlog_messages.append(dict_lecture)
-            self.contexte.message_dao.enter_error_state()
-            
-        except ChannelClosed as cc:
-            self._logger.exception("Channel closed", cc)
-            self._backlog_messages.append(dict_lecture)
-            self.contexte.message_dao.enter_error_state()
-            
-
-    ''' Verifie s'il y a un backlog, tente de reconnecter au message_dao et transmettre au besoin. '''
-    def traiter_backlog_messages(self):
-        if len(self._backlog_messages) > 0:
-            # Tenter de reconnecter a RabbitMQ
-            if self.contexte.message_dao._in_error:
-                try:
-                    self.contexte.message_dao.connecter()
-                except:
-                    logger.exception("Erreur connexion MQ")
-
-            # La seule facon de confirmer la connexion et d'envoyer un message
-            # On tente de passer le backlog en remettant le message dans la liste en cas d'echec
-            message = self._backlog_messages.pop()
-            try:
-                self._producteur_transaction.transmettre_lecture_senseur(message)
-                while len(self._backlog_messages) > 0:
-                    message = self._backlog_messages.pop()
-                    self._producteur_transaction.transmettre_lecture_senseur(message)
-                print("Traitement backlog complete")
-            except Exception as e:
-                print("Erreur traitement backlog, on push le message: %s" % str(e))
-                self._backlog_messages.append(message)
-                traceback.print_exc()
 
 
 # **** MAIN ****

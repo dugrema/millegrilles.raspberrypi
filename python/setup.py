@@ -2,12 +2,12 @@ from setuptools import setup
 
 setup(
     name='MilleGrillesRPi',
-    version='1.9.1',
+    version='1.13.0',
     packages=[
         'mgraspberry',
         'mgraspberry.raspberrypi'
     ],
-    url='',
+    url='https://www.maple.millegrilles.mdugre.info',
     license='',
     author='Mathieu Dugre',
     author_email='mail@mdugre.info',
