@@ -60,7 +60,7 @@ class PaquetDemandeDHCP(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = self.data[3:19]
+        self.uuid = bytes(self.data[3:19])
 
 
 class PaquetPayload(Paquet):
