@@ -32,14 +32,12 @@ class Paquet:
 
         self.version = None
         self.type_message = None
-        self.nombrePaquets = None
 
         self._parse()
 
     def _parse(self):
         self.version = self.data[0]
         self.type_message = self.data[1:3]
-        self.nombrePaquets = unpack('h', self.data[3:5])
 
     @property
     def data(self):
@@ -51,14 +49,16 @@ class Paquet0(Paquet):
     def __init__(self, data: bytes):
         super().__init__(data)
         self.uuid = None
+        self.nombrePaquets = None
 
     def _parse(self):
         super()._parse()
-        self.uuid = binascii.hexlify(self.data[5:22]).decode('utf-8')
+        self.uuid = self.data[5:22]
+        self.nombrePaquets = unpack('h', self.data[3:5])[0]
 
     def __str__(self):
         return 'Paquet0 UUID: %s, type: %s, nombrePaquets: %s' % (
-            self.uuid,
+            binascii.hexlify(self.uuid).decode('utf-8'),
             binascii.hexlify(self.type_message).decode('utf-8'),
             self.nombrePaquets
         )
@@ -72,6 +72,7 @@ class PaquetPayload(Paquet):
 
     def _parse(self):
         super()._parse()
+        self.__noPaquet = unpack('H', self.data[3:5])[0]
 
     @property
     def noPaquet(self):
