@@ -138,7 +138,7 @@ class PaquetPower(PaquetPayload):
 
     def _parse(self):
         super()._parse()
-        th_values = unpack('IBB', self.data[5:10])
+        th_values = unpack('IBB', self.data[5:11])
         millivolt = th_values[0]
         reserve = th_values[1]
         self.alerte = th_values[2]
