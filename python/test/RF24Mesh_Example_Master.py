@@ -59,13 +59,16 @@ while 1:
                 print("Paquet0 bin: %s" % binascii.hexlify(payload))
             elif chr(header.type) == 'p':
                 fromNodeId = mesh.getNodeID(header.from_node)
-                assembleur = reception_par_nodeId[fromNodeId]
-                complet = assembleur.recevoir(header, payload)
-                if complet:
-                    message = assembleur.assembler()
-                    message = json.dumps(message, indent=2)
-                    print("Message complet: \n%s" % message)
-                    del reception_par_nodeId[fromNodeId]
+                assembleur = reception_par_nodeId.get(fromNodeId)
+                if assembleur is not None:
+                    complet = assembleur.recevoir(header, payload)
+                    if complet:
+                        message = assembleur.assembler()
+                        message = json.dumps(message, indent=2)
+                        print("Message complet: \n%s" % message)
+                        del reception_par_nodeId[fromNodeId]
+                else:
+                    print("Message dropped, paquet 0 inconnu")
             elif chr(header.type) == 'd':
                 fromNodeId = mesh.getNodeID(header.from_node)
                 paquet = PaquetDemandeDHCP(header, payload, fromNodeId)
