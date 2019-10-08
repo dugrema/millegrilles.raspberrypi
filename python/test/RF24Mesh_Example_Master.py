@@ -24,7 +24,6 @@ radio.printDetails()
 
 reception_par_nodeId = dict()
 
-
 class Paquet:
 
     def __init__(self, data: bytes):
@@ -257,3 +256,4 @@ while 1:
                 del reception_par_nodeId[fromNodeId]
         else:
             print("Rcv bad type {} from 0{:o}".format(header.type, header.from_node))
+
