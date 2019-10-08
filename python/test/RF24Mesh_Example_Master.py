@@ -177,7 +177,7 @@ class MessageAppareil:
 
     @staticmethod
     def map(data: bytes):
-        type_message = data[1:3]
+        type_message = unpack('H', data[1:3])
 
         paquet = None
         if type_message == 0x102:
@@ -204,6 +204,7 @@ while 1:
             paquet0 = Paquet0(payload)
             message = MessageAppareil(paquet0)
             reception_par_nodeId[fromNodeId] = message
+            print("Paquet0 from node ID: %s, Paquet0: %s" % (str(fromNodeId), str(paquet0)))
         elif chr(header.type) == 'p':
             fromNodeId = mesh.getNodeID(header.from_node)
             complet = reception_par_nodeId[fromNodeId].recevoir(payload)
