@@ -206,7 +206,7 @@ class AssembleurPaquets:
         dict_message = {
             'uuid': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
             'timestamp': int(self.__timestamp_debut.timestamp()),
-            'senseurs': [s.assembler() for s in self.__paquets]
+            'senseurs': [s.assembler() for s in self.__paquets[1:]]
         }
 
         return dict_message
