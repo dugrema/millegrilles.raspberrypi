@@ -182,7 +182,7 @@ class MessageAppareil:
 
     @staticmethod
     def map(data: bytes):
-        type_message = unpack('H', data[1:3])
+        type_message = unpack('H', data[1:3])[0]
 
         paquet = None
         if type_message == 0x102:
