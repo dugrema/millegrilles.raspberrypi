@@ -17,7 +17,7 @@ network = RF24Network(radio)
 mesh = RF24Mesh(radio, network)
 
 mesh.setNodeID(0)
-mesh.begin(87)
+mesh.begin(62)
 radio.setPALevel(RF24_PA_LOW) # Power Amplifier
 radio.printDetails()
 
