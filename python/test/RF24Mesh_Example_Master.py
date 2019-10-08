@@ -87,7 +87,7 @@ class PaquetTP(PaquetPayload):
 
     def _parse(self):
         super()._parse()
-        th_values = unpack('hH', self.data[5:8])
+        th_values = unpack('hH', self.data[5:9])
         temperature = th_values[0]
         pression = th_values[1]
 
