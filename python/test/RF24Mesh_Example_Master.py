@@ -189,7 +189,7 @@ class MessageAppareil:
             paquet = PaquetTH(data)
         elif type_message == 0x103:
             paquet = PaquetTP(data)
-        elif type_message == 0x103:
+        elif type_message == 0x104:
             paquet = PaquetPower(data)
 
         return paquet
