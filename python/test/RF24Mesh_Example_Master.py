@@ -57,7 +57,11 @@ class Paquet0(Paquet):
         self.uuid = binascii.hexlify(self.data[5:22]).decode('utf-8')
 
     def __str__(self):
-        return 'Paquet0 UUID: %s, type: %s, nombrePaquets: %s' % (self.uuid, hex(self.type_message), self.nombrePaquets)
+        return 'Paquet0 UUID: %s, type: %s, nombrePaquets: %s' % (
+            self.uuid,
+            binascii.hexlify(self.type_message).decode('utf-8'),
+            self.nombrePaquets
+        )
 
 
 class PaquetPayload(Paquet):
