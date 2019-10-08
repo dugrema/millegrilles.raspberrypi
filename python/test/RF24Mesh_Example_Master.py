@@ -67,8 +67,8 @@ class Paquet0(Paquet):
 class PaquetPayload(Paquet):
 
     def __init__(self, data: bytes):
-        super().__init__(data)
         self.__noPaquet = None
+        super().__init__(data)
 
     def _parse(self):
         super()._parse()
@@ -81,9 +81,9 @@ class PaquetPayload(Paquet):
 
 class PaquetTP(PaquetPayload):
     def __init__(self, data: bytes):
-        super().__init__(data)
         self.temperature = None
         self.pression = None
+        super().__init__(data)
 
     def _parse(self):
         super()._parse()
@@ -106,9 +106,9 @@ class PaquetTP(PaquetPayload):
 
 class PaquetTH(PaquetPayload):
     def __init__(self, data: bytes):
-        super().__init__(data)
         self.temperature = None
         self.pression = None
+        super().__init__(data)
 
     def _parse(self):
         super()._parse()
@@ -131,10 +131,10 @@ class PaquetTH(PaquetPayload):
 
 class PaquetPower(PaquetPayload):
     def __init__(self, data: bytes):
-        super().__init__(data)
         self.millivolt = None
         self.reserve = None
         self.alerte = None
+        super().__init__(data)
 
     def _parse(self):
         super()._parse()
