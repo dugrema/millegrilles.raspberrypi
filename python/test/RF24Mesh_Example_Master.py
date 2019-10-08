@@ -23,14 +23,22 @@ radio.printDetails()
 
 commande_precedente = None
 
-def lire_thp(data):
+def lire_th(data):
 
-    tph_values = unpack('hHH', data[4:10])
-    temperature = float(tph_values[0]) / 10.0
-    humidite = float(tph_values[1]) / 10.0
-    pression = float(tph_values[2]) / 10.0
+    th_values = unpack('hH', data[4:8])
+    temperature = th_values[0]
+    humidite = th_values[1]
 
-    print('Temp: {}, Humidite: {}, Pression: {}'.format(temperature, humidite, pression))
+    if temperature == -32768:
+        temperature = None
+    else:
+        temperature = float(temperature) / 10.0
+    if humidite == 0xFF:
+        humidite = None
+    else:
+        humidite = float(humidite) / 10.0
+
+    print('Temp: {}, Humidite: {}'.format(temperature, humidite))
 
 
 def lire_mv(data):
@@ -41,7 +49,7 @@ def lire_mv(data):
 def routage_type_message(data):
     commande = unpack('H', data[2:4])[0]
     if commande == 0x102:
-        lire_thp(data)
+        lire_th(data)
     elif commande == 0x103:
         lire_mv(data)
     else:
