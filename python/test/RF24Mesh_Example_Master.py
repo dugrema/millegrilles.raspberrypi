@@ -68,7 +68,7 @@ while 1:
                         print("Message complet: \n%s" % message)
                         del reception_par_nodeId[fromNodeId]
                 else:
-                    print("Message dropped, paquet 0 inconnu")
+                    print("Message dropped, paquet 0 inconnu pour nodeId:%d" % fromNodeId)
             elif chr(header.type) == 'd':
                 fromNodeId = mesh.getNodeID(header.from_node)
                 paquet = PaquetDemandeDHCP(header, payload, fromNodeId)
