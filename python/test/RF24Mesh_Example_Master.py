@@ -10,6 +10,7 @@ import binascii
 import datetime
 import json
 import traceback
+import time
 
 from mgraspberry.raspberrypi.ProtocoleVersion7 import AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetReponseDHCP
 from mgraspberry.raspberrypi.RF24DHCP import ReserveDHCP
@@ -34,10 +35,13 @@ def transmettre_response_dhcp(node_id_reponse, node_id_assigne):
 
     paquet = PaquetReponseDHCP(node_id_assigne)
     message = paquet.encoder()
-    reponse = mesh.write(message, ord('d'), node_id_reponse, )
-    print("Reponse ecriture: %s" % str(reponse))
-    if not reponse:
-        print("Erreur transmission reponse")
+    for essai in range(0, 10):
+        reponse = mesh.write(message, ord('d'), node_id_reponse)
+        if not reponse:
+            print("Erreur transmission reponse")
+            time.sleep(0.2)
+        else:
+            break
 
 
 while 1:
