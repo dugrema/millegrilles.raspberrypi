@@ -105,6 +105,7 @@ class PaquetTP(PaquetPayload):
 
     def assembler(self):
         return {
+            'type': 'tp',
             'temperature': self.temperature,
             'pression': self.pression
         }
@@ -136,6 +137,7 @@ class PaquetTH(PaquetPayload):
 
     def assembler(self):
         return {
+            'type': 'th',
             'temperature': self.temperature,
             'humidite': self.humidite
         }
@@ -169,6 +171,7 @@ class PaquetPower(PaquetPayload):
 
     def assembler(self):
         return {
+            'type': 'batterie',
             'millivolt': self.millivolt,
             'reserve': self.reserve,
             'alerte': self.alerte,
