@@ -8,7 +8,7 @@ from struct import unpack
 
 import binascii
 import datetime
-
+import json
 
 # radio setup for RPi B Rev2: CS0=Pin 24
 # radio = RF24(RPI_V2_GPIO_P1_15, RPI_V2_GPIO_P1_24, BCM2835_SPI_SPEED_8MHZ)
@@ -38,6 +38,9 @@ class Paquet:
     def _parse(self):
         self.version = self.data[0]
         self.type_message = self.data[1:3]
+
+    def assembler(self):
+        raise NotImplementedError()
 
     @property
     def data(self):
@@ -100,6 +103,12 @@ class PaquetTP(PaquetPayload):
         else:
             self.pression = float(pression) / 100.0
 
+    def assembler(self):
+        return {
+            'temperature': self.temperature,
+            'pression': self.pression
+        }
+
     def __str__(self):
         return 'Temperature {}, Pression {}'.format(self.temperature, self.pression)
 
@@ -124,6 +133,12 @@ class PaquetTH(PaquetPayload):
             self.humidite = None
         else:
             self.humidite = float(humidite) / 10.0
+
+    def assembler(self):
+        return {
+            'temperature': self.temperature,
+            'humidite': self.humidite
+        }
 
     def __str__(self):
         return 'Temperature {}, Humidite {}'.format(self.temperature, self.humidite)
@@ -152,11 +167,18 @@ class PaquetPower(PaquetPayload):
         else:
             self.reserve = reserve
 
+    def assembler(self):
+        return {
+            'millivolt': self.millivolt,
+            'reserve': self.reserve,
+            'alerte': self.alerte,
+        }
+
     def __str__(self):
         return 'Millivolt {}, Reserve {}, Alerte {}'.format(self.millivolt, self.reserve, self.alerte)
 
 
-class MessageAppareil:
+class AssembleurPaquets:
 
     def __init__(self, paquet0: Paquet0):
         self.__paquet0 = paquet0
@@ -171,7 +193,7 @@ class MessageAppareil:
         :param data:
         :return: True si tous les paquets ont ete recus
         """
-        paquet = MessageAppareil.map(data)
+        paquet = AssembleurPaquets.map(data)
         print("Paquet: %s" % str(paquet))
         self.__paquets.append(paquet)
 
@@ -179,6 +201,16 @@ class MessageAppareil:
             return True
 
         return False
+
+    def assembler(self):
+        dict_message = {
+            'uuid': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
+            'timestamp': int(self.__timestamp_debut.timestamp()),
+            'senseurs': [s.assembler() for s in self.__paquets]
+        }
+
+        return dict_message
+
 
     @staticmethod
     def map(data: bytes):
@@ -207,15 +239,18 @@ while 1:
         elif chr(header.type) == 'P':
             fromNodeId = mesh.getNodeID(header.from_node)
             paquet0 = Paquet0(payload)
-            message = MessageAppareil(paquet0)
+            message = AssembleurPaquets(paquet0)
             reception_par_nodeId[fromNodeId] = message
             print("Paquet0 from node ID: %s, %s" % (str(fromNodeId), str(paquet0)))
             print("Paquet0 bin: %s" % binascii.hexlify(payload))
         elif chr(header.type) == 'p':
             fromNodeId = mesh.getNodeID(header.from_node)
-            complet = reception_par_nodeId[fromNodeId].recevoir(payload)
+            assembleur = reception_par_nodeId[fromNodeId]
+            complet = assembleur.recevoir(payload)
             if complet:
-                print("Message complet")
+                message = assembleur.assembler()
+                message = json.dumps(message, indent=2)
+                print("Message complet: \n%s" % message)
                 del reception_par_nodeId[fromNodeId]
         else:
-            print("Rcv bad type {} from 0{:o}".format(header.type, header.from_node));
+            print("Rcv bad type {} from 0{:o}".format(header.type, header.from_node))
