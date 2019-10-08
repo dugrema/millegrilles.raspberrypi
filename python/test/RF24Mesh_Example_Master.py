@@ -9,6 +9,7 @@ from struct import unpack
 import binascii
 import datetime
 import json
+import traceback
 
 from mgraspberry.raspberrypi.ProtocoleVersion7 import AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetReponseDHCP
 from mgraspberry.raspberrypi.RF24DHCP import ReserveDHCP
@@ -44,32 +45,36 @@ while 1:
     mesh.DHCP()
 
     while network.available():
-        header, payload = network.read(24)
-        print("Taille payload: %s" % len(payload))
-        if chr(header.type) == 'M':
-            print("Rcv {} from 0{:o}".format(unpack("h", payload)[0], header.from_node))
-        elif chr(header.type) == 'P':
-            fromNodeId = mesh.getNodeID(header.from_node)
-            paquet0 = Paquet0(header, payload)
-            message = AssembleurPaquets(paquet0)
-            reception_par_nodeId[fromNodeId] = message
-            print("Paquet0 from node ID: %s, %s" % (str(fromNodeId), str(paquet0)))
-            print("Paquet0 bin: %s" % binascii.hexlify(payload))
-        elif chr(header.type) == 'p':
-            fromNodeId = mesh.getNodeID(header.from_node)
-            assembleur = reception_par_nodeId[fromNodeId]
-            complet = assembleur.recevoir(header, payload)
-            if complet:
-                message = assembleur.assembler()
-                message = json.dumps(message, indent=2)
-                print("Message complet: \n%s" % message)
-                del reception_par_nodeId[fromNodeId]
-        elif chr(header.type) == 'd':
-            fromNodeId = mesh.getNodeID(header.from_node)
-            paquet = PaquetDemandeDHCP(header, payload, fromNodeId)
+        try:
+            header, payload = network.read(24)
+            print("Taille payload: %s" % len(payload))
+            if chr(header.type) == 'M':
+                print("Rcv {} from 0{:o}".format(unpack("h", payload)[0], header.from_node))
+            elif chr(header.type) == 'P':
+                fromNodeId = mesh.getNodeID(header.from_node)
+                paquet0 = Paquet0(header, payload)
+                message = AssembleurPaquets(paquet0)
+                reception_par_nodeId[fromNodeId] = message
+                print("Paquet0 from node ID: %s, %s" % (str(fromNodeId), str(paquet0)))
+                print("Paquet0 bin: %s" % binascii.hexlify(payload))
+            elif chr(header.type) == 'p':
+                fromNodeId = mesh.getNodeID(header.from_node)
+                assembleur = reception_par_nodeId[fromNodeId]
+                complet = assembleur.recevoir(header, payload)
+                if complet:
+                    message = assembleur.assembler()
+                    message = json.dumps(message, indent=2)
+                    print("Message complet: \n%s" % message)
+                    del reception_par_nodeId[fromNodeId]
+            elif chr(header.type) == 'd':
+                fromNodeId = mesh.getNodeID(header.from_node)
+                paquet = PaquetDemandeDHCP(header, payload, fromNodeId)
 
-            # On utilise le node id actuel (pour repondre) comme suggestion
-            node_id_suggere = paquet.node_id_reponse
-            node_id_reserve = reserve_dhcp.reserver(paquet.uuid, node_id_suggere)
+                # On utilise le node id actuel (pour repondre) comme suggestion
+                node_id_suggere = paquet.node_id_reponse
+                node_id_reserve = reserve_dhcp.reserver(paquet.uuid, node_id_suggere)
 
-            # On transmet la reponse
+                # On transmet la reponse
+        except Exception as e:
+            print("Erreur reception message: %s" % str(e))
+            traceback.print_last()
