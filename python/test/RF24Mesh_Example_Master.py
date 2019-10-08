@@ -79,6 +79,7 @@ while 1:
                 print("Transmission DHCP reponse nodeId: %d (reponse vers %d)" % (node_id_reserve, node_id_suggere))
 
                 # On transmet la reponse
+                transmettre_response_dhcp(node_id_suggere, node_id_reserve)
         except Exception as e:
             print("Erreur reception message: %s" % str(e))
             traceback.print_exc()
