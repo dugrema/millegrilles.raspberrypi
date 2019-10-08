@@ -55,7 +55,7 @@ def lire_tp(data):
     if pression == 0xFF:
         pression = None
     else:
-        pression = float(pression) / 10.0
+        pression = float(pression) / 100.0
 
     print('Temp: {}, Pression: {}'.format(temperature, pression))
 
