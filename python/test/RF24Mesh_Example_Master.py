@@ -53,7 +53,7 @@ class Paquet0(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = self.data[4:21]
+        self.uuid = binascii.hexlify(self.data[5:22])
         self.nombrePaquets = unpack('h', self.data[3:5])[0]
 
     def __str__(self):
@@ -210,6 +210,7 @@ while 1:
             message = MessageAppareil(paquet0)
             reception_par_nodeId[fromNodeId] = message
             print("Paquet0 from node ID: %s, Paquet0: %s" % (str(fromNodeId), str(paquet0)))
+            print("Paquet0 bin: %s" % binascii.hexlify(payload))
         elif chr(header.type) == 'p':
             fromNodeId = mesh.getNodeID(header.from_node)
             complet = reception_par_nodeId[fromNodeId].recevoir(payload)
