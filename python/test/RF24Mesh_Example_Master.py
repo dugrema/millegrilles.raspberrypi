@@ -47,9 +47,9 @@ class Paquet:
 class Paquet0(Paquet):
 
     def __init__(self, data: bytes):
-        super().__init__(data)
         self.uuid = None
         self.nombrePaquets = None
+        super().__init__(data)
 
     def _parse(self):
         super()._parse()
