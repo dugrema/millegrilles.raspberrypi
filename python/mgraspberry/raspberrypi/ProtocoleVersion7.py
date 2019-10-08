@@ -238,7 +238,7 @@ class PaquetTransmission:
 class PaquetReponseDHCP(PaquetTransmission):
 
     def __init__(self, node_id: int):
-        super().__init__(TYPE_REPONSE_DHCP, node_id)
+        super().__init__(TYPE_REPONSE_DHCP)
         self.node_id = node_id
 
     def encoder(self):
