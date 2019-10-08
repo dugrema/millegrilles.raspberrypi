@@ -53,7 +53,7 @@ class Paquet0(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = binascii.hexlify(self.data[6:22]).encode('utf-8')
+        self.uuid = self.data[6:22]
         self.nombrePaquets = unpack('h', self.data[3:5])[0]
 
     def __str__(self):
