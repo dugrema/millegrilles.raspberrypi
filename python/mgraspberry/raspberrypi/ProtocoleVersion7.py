@@ -1,12 +1,17 @@
-from struct import unpack
+from struct import pack, unpack
 
 import binascii
 import datetime
 
+VERSION_PROTOCOLE = 7
+
+TYPE_REQUETE_DHCP = 0x1
+TYPE_REPONSE_DHCP = 0x2
 
 class Paquet:
 
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
+        self.__header = header
         self.__data = data
 
         self.version = None
@@ -28,10 +33,10 @@ class Paquet:
 
 class Paquet0(Paquet):
 
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
         self.uuid = None
         self.nombrePaquets = None
-        super().__init__(data)
+        super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
@@ -46,11 +51,23 @@ class Paquet0(Paquet):
         )
 
 
+class PaquetDemandeDHCP(Paquet):
+
+    def __init__(self, header, data: bytes, from_node_id):
+        self.node_id_reponse = from_node_id
+        self.__node_uuid = None
+        super().__init__(header, data)
+
+    def _parse(self):
+        super()._parse()
+        self.uuid = self.data[3:19]
+
+
 class PaquetPayload(Paquet):
 
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
         self.__noPaquet = None
-        super().__init__(data)
+        super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
@@ -62,10 +79,10 @@ class PaquetPayload(Paquet):
 
 
 class PaquetTP(PaquetPayload):
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
         self.temperature = None
         self.pression = None
-        super().__init__(data)
+        super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
@@ -94,10 +111,10 @@ class PaquetTP(PaquetPayload):
 
 
 class PaquetTH(PaquetPayload):
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
         self.temperature = None
         self.pression = None
-        super().__init__(data)
+        super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
@@ -126,11 +143,11 @@ class PaquetTH(PaquetPayload):
 
 
 class PaquetPower(PaquetPayload):
-    def __init__(self, data: bytes):
+    def __init__(self, header, data: bytes):
         self.millivolt = None
         self.reserve = None
         self.alerte = None
-        super().__init__(data)
+        super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
@@ -169,13 +186,13 @@ class AssembleurPaquets:
         self.__paquets = list()
         self.__paquets.append(paquet0)
 
-    def recevoir(self, data: bytes):
+    def recevoir(self, header, data: bytes):
         """
         Recoit un nouveau paquet de payload. Retourne True quand tous les paquets sont recus.
         :param data:
         :return: True si tous les paquets ont ete recus
         """
-        paquet = AssembleurPaquets.map(data)
+        paquet = AssembleurPaquets.map(header, data)
         print("Paquet: %s" % str(paquet))
         self.__paquets.append(paquet)
 
@@ -195,15 +212,36 @@ class AssembleurPaquets:
 
 
     @staticmethod
-    def map(data: bytes):
+    def map(header, data: bytes):
         type_message = unpack('H', data[1:3])[0]
 
         paquet = None
         if type_message == 0x102:
-            paquet = PaquetTH(data)
+            paquet = PaquetTH(header, data)
         elif type_message == 0x103:
-            paquet = PaquetTP(data)
+            paquet = PaquetTP(header, data)
         elif type_message == 0x104:
-            paquet = PaquetPower(data)
+            paquet = PaquetPower(header, data)
 
         return paquet
+
+
+class PaquetTransmission:
+
+    def __init__(self, type_message: int):
+        self.type_message = type_message
+
+    def encoder(self):
+        return None
+
+
+class PaquetReponseDHCP(PaquetTransmission):
+
+    def __init__(self, node_id: int):
+        super().__init__(TYPE_REPONSE_DHCP, node_id)
+        self.node_id = node_id
+
+    def encoder(self):
+        message = pack('=BHB', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP, self.node_id)
+        message = message + bytes(24-len(message))  # Padding a 24
+        return message
