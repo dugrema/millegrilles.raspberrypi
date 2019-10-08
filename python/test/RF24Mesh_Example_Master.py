@@ -76,6 +76,7 @@ while 1:
                 # On utilise le node id actuel (pour repondre) comme suggestion
                 node_id_suggere = paquet.node_id_reponse
                 node_id_reserve = reserve_dhcp.reserver(paquet.uuid, node_id_suggere)
+                print("Transmission DHCP reponse nodeId: %d (reponse vers %d)" % (node_id_reserve, node_id_suggere))
 
                 # On transmet la reponse
         except Exception as e:
