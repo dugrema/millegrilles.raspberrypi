@@ -77,5 +77,4 @@ while 1:
                 # On transmet la reponse
         except Exception as e:
             print("Erreur reception message: %s" % str(e))
-            print(e)
-            # traceback.print_exception(Exception, 'test', tb=e)
+            traceback.print_exc()
