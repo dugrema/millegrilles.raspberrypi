@@ -41,6 +41,21 @@ def lire_th(data):
     print('Temp: {}, Humidite: {}'.format(temperature, humidite))
 
 
+def lire_power(data):
+
+    th_values = unpack('IBB', data[4:10])
+    millivolt = th_values[0]
+    reserve = th_values[1]
+    alerte = th_values[2]
+
+    if millivolt == 0xFFFFFFFF:
+        millivolt = None
+    if reserve == 0xFF:
+        humidite = None
+
+    print('Millivolt: {}, Reserve: {}, Alerte: {}'.format(millivolt, reserve, alerte))
+
+
 def lire_mv(data):
     mv_values = unpack('LLLL', data[4:20])
     print("Millivolt: {}, {}, {}, {}".format(mv_values[0], mv_values[1], mv_values[2], mv_values[3]))
@@ -52,6 +67,8 @@ def routage_type_message(data):
         lire_th(data)
     elif commande == 0x103:
         lire_mv(data)
+    elif commande == 0x104:
+        lire_power(data)
     else:
         raise ValueError("Type message inconnu %s" % hex(commande))
 
@@ -64,7 +81,7 @@ while 1:
         header, payload = network.read(24)
         print("Taille payload: %s" % len(payload))
         if chr(header.type) == 'M':
-            print("Rcv {} from 0{:o}".format(unpack("h",payload)[0], header.from_node))
+            print("Rcv {} from 0{:o}".format(unpack("h", payload)[0], header.from_node))
         elif chr(header.type) == 'P':
             version = payload[0]
             uuid_appareil = binascii.hexlify(payload[1:17]).decode('utf-8')
@@ -77,8 +94,6 @@ while 1:
             print("Rcv version:{}, UUID:{}, commande:{}, nombre_paquets:{}, from 0{:o}".format(version, uuid_appareil, commande, nombre_paquets, header.from_node))
         elif chr(header.type) == 'p':
             routage_type_message(payload)
-            #lire_thp(payload)
-            # print("Rcv UUID:{} from 0{:o}".format(unpack("hhhhhhhhhhhhhhhhhhhhhhhh",payload)[0], header.from_node))
         else:
             print("Rcv bad type {} from 0{:o}".format(header.type,header.from_node));
 
