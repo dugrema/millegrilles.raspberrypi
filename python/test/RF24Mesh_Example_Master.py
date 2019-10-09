@@ -51,7 +51,11 @@ while 1:
 
     while network.available():
         try:
-            header, payload = network.read(24)
+            header, payload = network.peek(8)
+            taille_buffer = 24
+            if chr(header.type) == '2':
+                taille_buffer = 48
+            header, payload = network.read(taille_buffer)
             print("Taille payload: %s" % len(payload))
             if chr(header.type) == 'M':
                 print("Rcv {} from 0{:o}".format(unpack("h", payload)[0], header.from_node))
@@ -85,6 +89,10 @@ while 1:
 
                 # On transmet la reponse
                 transmettre_response_dhcp(node_id_suggere, node_id_reserve)
+            elif chr(header.type) == '2':
+                payload = payload
+                fromNodeId = mesh.getNodeID(header.from_node)
+                print('Paquet double (%d): %s' % (len(payload), binascii.hexlify(payload).decode('utf-8')))
         except Exception as e:
             print("Erreur reception message: %s" % str(e))
             traceback.print_exc()
