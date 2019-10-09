@@ -211,7 +211,7 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def _parse(self):
         super()._parse()
-        self.temperature = unpack('i', self.data[0:2])
+        self.temperature = unpack('s', self.data[0:2])
 
     def assembler(self):
         return {
