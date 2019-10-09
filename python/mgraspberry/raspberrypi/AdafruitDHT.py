@@ -1,7 +1,7 @@
 # Module pour les classes d'appareils utilises avec un Raspberry Pi (2, 3).
 import sys
 import traceback
-import time
+import datetime
 import logging
 import Adafruit_DHT  # https://github.com/adafruit/Adafruit_Python_DHT.git
 
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 #   - Adafruit package Adafruit_DHT
 class ThermometreAdafruitGPIO:
 
-    def __init__(self, no_senseur, pin=24, sensor=Adafruit_DHT.AM2302, intervalle_lectures=50):
-        self._no_senseur = no_senseur
+    def __init__(self, uuid_senseur, pin=24, sensor=Adafruit_DHT.AM2302, intervalle_lectures=50):
+        self._uuid_senseur = uuid_senseur
         self._pin = pin
         self._sensor = sensor
         self._intervalle_lectures = intervalle_lectures
@@ -30,11 +30,13 @@ class ThermometreAdafruitGPIO:
         humidite, temperature = Adafruit_DHT.read_retry(self._sensor, self._pin)
 
         dict_message = {
-            'version': 6,
-            'senseur': self._no_senseur,
-            'temps_lecture': int(time.time()),
-            'temperature': round(temperature, 1),
-            'humidite': round(humidite, 1)
+            'uuid': self._uuid_senseur,
+            'timestamp': int(datetime.datetime.utcnow().timestamp()),
+            'senseurs': [{
+                'type': 'am2302',
+                'temperature': round(temperature, 1),
+                'humidite': round(humidite, 1),
+            }]
         }
 
         # Verifier que les valeurs ne sont pas erronees
