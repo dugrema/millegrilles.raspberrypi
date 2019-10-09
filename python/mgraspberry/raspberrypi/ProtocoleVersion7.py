@@ -177,6 +177,32 @@ class PaquetPower(PaquetPayload):
         return 'Millivolt {}, Reserve {}, Alerte {}'.format(self.millivolt, self.reserve, self.alerte)
 
 
+class PaquetOneWire(PaquetPayload):
+
+    def __init__(self, header, data: bytes):
+        self.adresse_onewire = None
+        self.data_onewire = None
+        super().__init__(header, data)
+
+    def _parse(self):
+        super()._parse()
+        self.adresse_onewire = self.data[5:14]
+        self.data_onewire = self.data[14:27]
+
+    def assembler(self):
+        return {
+            'type': 'onewire',
+            'adresse': binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            'data': binascii.hexlify(self.data_onewire).decode('utf-8'),
+        }
+
+    def __str__(self):
+        return 'OneWire adresse {}, data {}'.format(
+            binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            binascii.hexlify(self.data_onewire).decode('utf-8')
+        )
+
+
 class AssembleurPaquets:
 
     def __init__(self, paquet0: Paquet0):
@@ -222,6 +248,8 @@ class AssembleurPaquets:
             paquet = PaquetTP(header, data)
         elif type_message == 0x104:
             paquet = PaquetPower(header, data)
+        elif type_message == 0x105:
+            paquet = PaquetOneWire(header, data)
 
         return paquet
 

@@ -90,9 +90,18 @@ while 1:
                 # On transmet la reponse
                 transmettre_response_dhcp(node_id_suggere, node_id_reserve)
             elif chr(header.type) == '2':
-                payload = payload
-                fromNodeId = mesh.getNodeID(header.from_node)
                 print('Paquet double (%d): %s' % (len(payload), binascii.hexlify(payload).decode('utf-8')))
+                fromNodeId = mesh.getNodeID(header.from_node)
+                assembleur = reception_par_nodeId.get(fromNodeId)
+                if assembleur is not None:
+                    complet = assembleur.recevoir(header, payload)
+                    if complet:
+                        message = assembleur.assembler()
+                        message = json.dumps(message, indent=2)
+                        print("Message complet: \n%s" % message)
+                        del reception_par_nodeId[fromNodeId]
+                else:
+                    print("Message dropped, paquet 0 inconnu pour nodeId:%d" % fromNodeId)
         except Exception as e:
             print("Erreur reception message: %s" % str(e))
             traceback.print_exc()
