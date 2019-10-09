@@ -222,6 +222,7 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def decoder_temperature(self):
         temp_val = unpack('h', self.data[13:15])[0]
+        # Note: incomplet, ne gere pas les temps negatives
         self.temperature = temp_val / 16
 
     def __str__(self):
