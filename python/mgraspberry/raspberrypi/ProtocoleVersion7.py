@@ -203,6 +203,30 @@ class PaquetOneWire(PaquetPayload):
         )
 
 
+class PaquetOneWireTemperature(PaquetOneWire):
+
+    def __init__(self, header, data: bytes):
+        self.temperature = None
+        super().__init__(header, data)
+
+    def _parse(self):
+        super()._parse()
+        self.temperature = unpack('i', self.data[0:2])
+
+    def assembler(self):
+        return {
+            'type': 'onewire',
+            'adresse': binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            'temperature': self.temperature,
+        }
+
+    def __str__(self):
+        return 'OneWire adresse {}, temperature {}'.format(
+            binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            self.temperature,
+        )
+
+
 class AssembleurPaquets:
 
     def __init__(self, paquet0: Paquet0):
@@ -249,7 +273,7 @@ class AssembleurPaquets:
         elif type_message == 0x104:
             paquet = PaquetPower(header, data)
         elif type_message == 0x105:
-            paquet = PaquetOneWire(header, data)
+            paquet = PaquetOneWireTemperature(header, data)
 
         return paquet
 
