@@ -221,9 +221,10 @@ class PaquetOneWireTemperature(PaquetOneWire):
         }
 
     def __str__(self):
-        return 'OneWire adresse {}, temperature {}'.format(
+        return 'OneWire adresse {}, temperature {}, data {}'.format(
             binascii.hexlify(self.adresse_onewire).decode('utf-8'),
             self.temperature,
+            binascii.hexlify(self.data_onewire).decode('utf-8'),
         )
 
 
