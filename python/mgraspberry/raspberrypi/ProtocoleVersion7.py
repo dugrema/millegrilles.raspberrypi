@@ -266,7 +266,7 @@ class AssembleurPaquets:
             liste_ordonnee.append(self.__paquets[idx])
 
         dict_message = {
-            'uuid': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
+            'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
             'timestamp': int(self.__timestamp_debut.timestamp()),
             'senseurs': [s.assembler() for s in liste_ordonnee]
         }
