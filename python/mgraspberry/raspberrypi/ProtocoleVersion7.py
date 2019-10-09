@@ -226,7 +226,6 @@ class PaquetOneWireTemperature(PaquetOneWire):
             self.temperature = None  # Lecture nulle
         else:
             temp_val = unpack('h', val)[0]
-            # Note: incomplet, ne gere pas les temps negatives
             self.temperature = temp_val / 16
 
     def __str__(self):
