@@ -187,7 +187,7 @@ class PaquetOneWire(PaquetPayload):
     def _parse(self):
         super()._parse()
         self.adresse_onewire = self.data[5:13]
-        self.data_onewire = self.data[14:26]
+        self.data_onewire = self.data[13:25]
 
     def assembler(self):
         return {
@@ -211,7 +211,7 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def _parse(self):
         super()._parse()
-        self.temperature = unpack('h', self.data[0:2])
+        self.temperature = unpack('h', self.data[0:2])[0]
 
     def assembler(self):
         return {
