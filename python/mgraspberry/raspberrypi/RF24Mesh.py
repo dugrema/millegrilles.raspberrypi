@@ -81,6 +81,8 @@ class NRF24MeshServer:
                         self.__logger.exception("HubNRF24L: Error processing radio message")
                         self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
 
+                self.__stop_event.wait(0.005)  # Throttle le service
+
             except Exception as e:
                 self.__logger.exception("HubNRF24L: Error processing update ou DHCP")
                 self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre

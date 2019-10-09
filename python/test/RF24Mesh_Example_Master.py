@@ -13,7 +13,7 @@ import traceback
 import time
 
 from mgraspberry.raspberrypi.ProtocoleVersion7 import AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetReponseDHCP
-from mgraspberry.raspberrypi.RF24DHCP import ReserveDHCP
+from mgraspberry.raspberrypi.RF24Mesh import ReserveDHCP
 
 # radio setup for RPi B Rev2: CS0=Pin 24
 # radio = RF24(RPI_V2_GPIO_P1_15, RPI_V2_GPIO_P1_24, BCM2835_SPI_SPEED_8MHZ)

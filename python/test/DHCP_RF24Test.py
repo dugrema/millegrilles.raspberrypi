@@ -1,6 +1,6 @@
 import unittest
 
-from mgraspberry.raspberrypi.RF24DHCP import ReserveDHCP
+from mgraspberry.raspberrypi.RF24Mesh import ReserveDHCP
 
 class TestDHCP(unittest.TestCase):
 
