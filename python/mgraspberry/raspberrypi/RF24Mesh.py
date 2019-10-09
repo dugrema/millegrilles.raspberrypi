@@ -39,8 +39,8 @@ class NRF24MeshServer:
         self.__mesh.setNodeID(0)
         self.__mesh.begin(62)
 
-        self.radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
-        self.radio.printDetails()
+        self.__radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
+        self.__radio.printDetails()
 
     # Starts thread and runs the process
     def start(self, callback_soumettre):
