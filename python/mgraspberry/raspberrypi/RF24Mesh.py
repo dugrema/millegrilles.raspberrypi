@@ -1,6 +1,6 @@
-from RF24 import *
-from RF24Network import *
-from RF24Mesh import *
+import RF24
+import RF24Network
+import RF24Mesh
 
 from threading import Thread, Event
 
@@ -33,13 +33,13 @@ class NRF24MeshServer:
 
     def open_radio(self):
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
-        self.__network = RF24Network(radio)
-        self.__mesh = RF24Mesh(radio, network)
+        self.__network = RF24Network.RF24Network(radio)
+        self.__mesh = RF24Network.RF24Mesh(radio, network)
 
         self.__mesh.setNodeID(0)
         self.__mesh.begin(62)
 
-        self.radio.setPALevel(RF24_PA_HIGH)  # Power Amplifier
+        self.radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
         self.radio.printDetails()
 
     # Starts thread and runs the process
