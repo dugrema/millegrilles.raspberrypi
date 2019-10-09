@@ -66,16 +66,16 @@ class PaquetDemandeDHCP(Paquet):
 class PaquetPayload(Paquet):
 
     def __init__(self, header, data: bytes):
-        self.__noPaquet = None
+        self.__no_paquet = None
         super().__init__(header, data)
 
     def _parse(self):
         super()._parse()
-        self.__noPaquet = unpack('H', self.data[3:5])[0]
+        self.__no_paquet = unpack('H', self.data[3:5])[0]
 
     @property
-    def noPaquet(self):
-        return self.__noPaquet
+    def no_paquet(self):
+        return self.__no_paquet
 
 
 class PaquetTP(PaquetPayload):
@@ -242,8 +242,8 @@ class AssembleurPaquets:
         self.__paquet0 = paquet0
         self.__timestamp_debut = datetime.datetime.utcnow()
 
-        self.__paquets = list()
-        self.__paquets.append(paquet0)
+        self.__paquets = dict()
+        self.__paquets[0] = paquet0
 
     def recevoir(self, header, data: bytes):
         """
@@ -253,7 +253,7 @@ class AssembleurPaquets:
         """
         paquet = AssembleurPaquets.map(header, data)
         print("Paquet: %s" % str(paquet))
-        self.__paquets.append(paquet)
+        self.__paquets[paquet.no_paquet] = paquet
 
         if self.__paquet0.nombrePaquets == len(self.__paquets):
             return True
@@ -261,10 +261,14 @@ class AssembleurPaquets:
         return False
 
     def assembler(self):
+        liste_ordonnee = list()
+        for idx in range(1, len(self.__paquets)):
+            liste_ordonnee.append(self.__paquets[idx])
+
         dict_message = {
             'uuid': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
             'timestamp': int(self.__timestamp_debut.timestamp()),
-            'senseurs': [s.assembler() for s in self.__paquets[1:]]
+            'senseurs': [s.assembler() for s in liste_ordonnee]
         }
 
         return dict_message
