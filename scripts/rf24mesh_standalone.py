@@ -12,7 +12,7 @@ logger.setLevel(logging.DEBUG)
 
 def print_message(message: dict):
     json_message = json.dumps(message, indent=2)
-    logger.info("Message recu: \n%s" % json_message)
+    logger.info("Message recu: \n%s" % json_message.decode('utf-8'))
 
 
 server = NRF24MeshServer()
