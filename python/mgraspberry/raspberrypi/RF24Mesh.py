@@ -48,7 +48,7 @@ class NRF24MeshServer:
         self._callback_soumettre = callback_soumettre
         self.thread = Thread(target=self.run)
         self.thread.start()
-        self.__logger.info("HubNRF24L: nRF24L thread started successfully")
+        self.__logger.info("NRF24MeshServer: nRF24L thread started successfully")
 
     def run(self):
 
@@ -78,13 +78,13 @@ class NRF24MeshServer:
                             self.process_dhcp_request(header, payload)
 
                     except Exception as e:
-                        self.__logger.exception("HubNRF24L: Error processing radio message")
+                        self.__logger.exception("NRF24MeshServer: Error processing radio message")
                         self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
 
                 self.__stop_event.wait(0.005)  # Throttle le service
 
             except Exception as e:
-                self.__logger.exception("HubNRF24L: Error processing update ou DHCP")
+                self.__logger.exception("NRF24MeshServer: Error processing update ou DHCP")
                 self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
 
     def process_dhcp_request(self, header, payload):
@@ -141,10 +141,10 @@ class NRF24MeshServer:
     def fermer(self):
         self.__stop_event.set()
         try:
-            self.radio.stopListening()
-            self.radio = None
+            self.__radio.stopListening()
+            self.__radio = None
         except Exception as e:
-            self.__logger.warning("HubNRF24L: Error closing radio: %s" % str(e))
+            self.__logger.warning("NRF24MeshServer: Error closing radio: %s" % str(e))
 
 
 class ReserveDHCP:
