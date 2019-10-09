@@ -35,10 +35,10 @@ def transmettre_response_dhcp(node_id_reponse, node_id_assigne):
 
     paquet = PaquetReponseDHCP(node_id_assigne)
     message = paquet.encoder()
-    for essai in range(0, 2):
+    for essai in range(0, 4):
         reponse = mesh.write(message, ord('d'), node_id_reponse)
         if not reponse:
-            print("Erreur transmission reponse")
+            print("Erreur transmission reponse %s" % str(reponse))
             mesh.update()
             time.sleep(0.4)
         else:
