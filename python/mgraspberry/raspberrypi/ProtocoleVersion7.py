@@ -211,14 +211,18 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def _parse(self):
         super()._parse()
-        self.temperature = unpack('h', self.data[0:2])[0]
+        self.decoder_temperature()
 
     def assembler(self):
         return {
-            'type': 'onewire',
+            'type': 'onewire/temperature',
             'adresse': binascii.hexlify(self.adresse_onewire).decode('utf-8'),
             'temperature': self.temperature,
         }
+
+    def decoder_temperature(self):
+        temp_val = unpack('h', self.data[13:15])[0]
+        self.temperature = temp_val / 16
 
     def __str__(self):
         return 'OneWire adresse {}, temperature {}, data {}'.format(
