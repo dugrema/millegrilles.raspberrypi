@@ -72,7 +72,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             config_noeud = dict()
 
         if config_noeud.get('uuid') is None:
-            config_noeud['uuid'] = binascii.hexlify(uuid1().bytes)
+            config_noeud['uuid'] = binascii.hexlify(uuid1().bytes).decode('utf-8')
             with open('/opt/millegrilles/etc/noeud.json', 'w') as fichier:
                 json.dump(config_noeud, fichier)
 
