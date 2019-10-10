@@ -240,7 +240,7 @@ class AssembleurPaquets:
 
     def __init__(self, paquet0: Paquet0):
         self.__paquet0 = paquet0
-        self.__timestamp_debut = datetime.datetime.utcnow()
+        self.__timestamp_debut = datetime.datetime.now()
 
         self.__paquets = dict()
         self.__paquets[0] = paquet0
