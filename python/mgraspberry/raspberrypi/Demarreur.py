@@ -38,7 +38,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
 
         self._affichage_lcd = None
-        self._hub_nrf24l01 = None
+        self._rf24_mesh_master = None
         self._am2302 = None
 
         self.__uuid = None
@@ -51,7 +51,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
-            '--nrf24', action="store_true", required=False,
+            '--rf24master', action="store_true", required=False,
             help="Active le hub nRF24L01"
         )
         self._parser.add_argument(
@@ -104,9 +104,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def fermer(self):
         super().fermer()
 
-        if self._hub_nrf24l01 is not None:
+        if self._rf24_mesh_master is not None:
             try:
-                self._hub_nrf24l01.fermer()
+                self._rf24_mesh_master.fermer()
             except Exception as enrf:
                 print("erreur fermeture NRF24L01: %s" % str(enrf))
 
@@ -133,10 +133,10 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):
-        print("Activer nRF24L01")
-        from mgraspberry.raspberrypi.NRF24L import HubNRF24L
-        self._hub_nrf24l01 = HubNRF24L()
-        self._hub_nrf24l01.start(self.transmettre_lecture_callback)
+        print("Activer RF24 Mesh Master")
+        from mgraspberry.raspberrypi.RF24Mesh import NRF24MeshServer
+        self._rf24_mesh_master = NRF24MeshServer()
+        self._rf24_mesh_master.start(self.transmettre_lecture_callback)
         self._chargement_reussi = True
 
     def inclure_am2302(self):
