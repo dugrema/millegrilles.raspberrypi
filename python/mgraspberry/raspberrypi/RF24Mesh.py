@@ -114,8 +114,8 @@ class NRF24MeshServer:
             complet = assembleur.recevoir(header, payload)
             if complet:
                 message = assembleur.assembler()
-                message = json.dumps(message, indent=2)
-                self.__logger.debug("Message complet: \n%s" % message)
+                message_json = json.dumps(message, indent=2)
+                self.__logger.debug("Message complet: \n%s" % message_json)
 
                 # Transmettre message recu a MQ
                 self._callback_soumettre(message)
