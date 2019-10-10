@@ -87,7 +87,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
                 print("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
                 traceback.print_exc()
 
-        if self._args.nrf24:
+        if self._args.rf24master:
             try:
                 self.inclure_nrf24l01()
             except Exception as erreur_nrf24:
