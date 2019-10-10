@@ -25,10 +25,10 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def __init__(
             self,
-            pidfile='/run/mg-demarreur-rpi.pid',
+            pidfile='/run/mg-noeud.pid',
             stdin='/dev/null',
-            stdout='/var/log/mg-demarreur-rpi.log',
-            stderr='/var/log/mg-demarreur-rpi.err'
+            stdout='/var/log/millegrilles/noeud.log',
+            stderr='/var/log/millegrilles/noeud.err'
     ):
         # Call superclass init
         super().__init__(pidfile, stdin, stdout, stderr)
