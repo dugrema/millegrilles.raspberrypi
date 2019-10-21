@@ -31,7 +31,7 @@ class ThermometreAdafruitGPIO:
 
         dict_message = {
             'uuid_senseur': self._uuid_senseur,
-            'timestamp': int(datetime.datetime.utcnow().timestamp()),
+            'timestamp': int(datetime.datetime.now().timestamp()),
             'senseurs': [{
                 'type': 'am2302',
                 'temperature': round(temperature, 1),

@@ -128,7 +128,7 @@ class NRF24MeshServer:
 
         paquet = PaquetReponseDHCP(node_id_assigne)
         message = paquet.encoder()
-        for essai in range(0, 4):
+        for essai in range(0, 10):
             reponse = self.__mesh.write(message, ord('d'), node_id_reponse)
             if not reponse:
                 self.__logger.warning("Erreur transmission reponse %s" % str(reponse))
