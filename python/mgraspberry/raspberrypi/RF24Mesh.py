@@ -37,7 +37,7 @@ class NRF24MeshServer:
         self.__mesh = RF24Mesh.RF24Mesh(self.__radio, self.__network)
 
         self.__mesh.setNodeID(0)
-        self.__mesh.begin(62)
+        self.__mesh.begin(0x7d, RF24.RF24_250KBPS)
 
         self.__radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
         self.__radio.printDetails()

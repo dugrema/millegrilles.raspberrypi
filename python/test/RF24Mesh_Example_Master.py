@@ -22,8 +22,8 @@ network = RF24Network(radio)
 mesh = RF24Mesh(radio, network)
 
 mesh.setNodeID(0)
-mesh.begin(62)
-radio.setPALevel(RF24_PA_LOW) # Power Amplifier
+mesh.begin(0x7d, RF24_250KBPS)
+radio.setPALevel(RF24_PA_HIGH) # Power Amplifier
 radio.printDetails()
 
 
@@ -35,8 +35,9 @@ def transmettre_response_dhcp(node_id_reponse, node_id_assigne):
 
     paquet = PaquetReponseDHCP(node_id_assigne)
     message = paquet.encoder()
-    for essai in range(0, 4):
+    for essai in range(0, 5):
         reponse = mesh.write(message, ord('d'), node_id_reponse)
+        mesh.update()
         if not reponse:
             print("Erreur transmission reponse %s" % str(reponse))
             mesh.update()
