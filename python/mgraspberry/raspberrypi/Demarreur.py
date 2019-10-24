@@ -47,7 +47,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
-            '--lcdsenseurs', type=int, nargs='+', required=False,
+            '--lcdsenseurs', type=str, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
@@ -55,7 +55,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             help="Active le hub nRF24L01"
         )
         self._parser.add_argument(
-            '--am2302', type=int, nargs=1,
+            '--am2302', type=int,
             required=False, help="Active le senseur AM2302 sur pin (en parametre)"
         )
 
@@ -98,7 +98,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             try:
                 self.inclure_am2302()
             except Exception as erreur_nrf24:
-                print("Erreur chargement AM2302 sur pin %d: %s" % (self._args.am2302, str(erreur_nrf24)))
+                print("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
                 traceback.print_exc()
 
     def fermer(self):
@@ -140,7 +140,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._chargement_reussi = True
 
     def inclure_am2302(self):
-        pin = self._args.am2302[1]
+        pin = self._args.am2302
         print("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
         self._am2302 = ThermometreAdafruitGPIO(self.__uuid, pin=pin)
