@@ -30,6 +30,10 @@ class Paquet:
     def data(self):
         return self.__data
 
+    @property
+    def from_node(self):
+        return self.__header.from_node
+
 
 class Paquet0(Paquet):
 
