@@ -37,7 +37,7 @@ class NRF24MeshServer:
         self.__mesh = RF24Mesh.RF24Mesh(self.__radio, self.__network)
 
         self.__mesh.setNodeID(0)
-        self.__mesh.begin(0x7d, RF24.RF24_250KBPS)
+        self.__mesh.begin(0x7d, RF24.RF24_2MBPS)
 
         self.__radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
         self.__radio.printDetails()
@@ -50,38 +50,44 @@ class NRF24MeshServer:
         self.thread.start()
         self.__logger.info("NRF24MeshServer: nRF24L thread started successfully")
 
+    def __process_network_messages(self):
+        while self.__network.available():
+
+            try:
+                header, payload = self.__network.peek(8)
+                taille_buffer = 24
+                header_type = chr(header.type)
+                if header_type == '2':
+                    taille_buffer = 48
+                header, payload = self.__network.read(taille_buffer)
+                self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
+
+                if header_type in ['2', 'p']:
+                    self.process_paquet_payload(header, payload)
+                elif header_type == 'P':
+                    self.process_paquet0(header, payload)
+                elif header_type == 'D':
+                    self.process_dhcp_request(header, payload)
+
+            except Exception as e:
+                self.__logger.exception("NRF24MeshServer: Error processing radio message")
+                self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
+
+    def __executer_cycle_mesh(self):
+        self.__mesh.update()
+        self.__mesh.DHCP()
+
+        self.__process_network_messages()
+
+        self.__stop_event.wait(0.005)  # Throttle le service
+
     def run(self):
 
         # Boucle principale d'execution
         while not self.__stop_event.is_set():
 
             try:
-                self.__mesh.update()
-                self.__mesh.DHCP()
-
-                while self.__network.available():
-
-                    try:
-                        header, payload = self.__network.peek(8)
-                        taille_buffer = 24
-                        header_type = chr(header.type)
-                        if header_type == '2':
-                            taille_buffer = 48
-                        header, payload = self.__network.read(taille_buffer)
-                        self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
-
-                        if header_type in ['2', 'p']:
-                            self.process_paquet_payload(header, payload)
-                        elif header_type == 'P':
-                            self.process_paquet0(header, payload)
-                        elif header_type == 'D':
-                            self.process_dhcp_request(header, payload)
-
-                    except Exception as e:
-                        self.__logger.exception("NRF24MeshServer: Error processing radio message")
-                        self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
-
-                self.__stop_event.wait(0.005)  # Throttle le service
+                self.__executer_cycle_mesh()
 
             except Exception as e:
                 self.__logger.exception("NRF24MeshServer: Error processing update ou DHCP")
@@ -128,12 +134,11 @@ class NRF24MeshServer:
 
         paquet = PaquetReponseDHCP(node_id_assigne)
         message = paquet.encoder()
-        for essai in range(0, 10):
+        for essai in range(0, 4):
             reponse = self.__mesh.write(message, ord('d'), node_id_reponse)
             if not reponse:
                 self.__logger.warning("Erreur transmission reponse %s" % str(reponse))
-                self.__mesh.update()
-                time.sleep(0.4)
+                self.__executer_cycle_mesh()
             else:
                 break
 
