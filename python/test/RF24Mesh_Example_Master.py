@@ -21,9 +21,17 @@ radio = RF24(RPI_V2_GPIO_P1_22, RPI_V2_GPIO_P1_24, BCM2835_SPI_SPEED_8MHZ)
 network = RF24Network(radio)
 mesh = RF24Mesh(radio, network)
 
+radio.begin()
+# radio.setAutoAck(True)
+# radio.enableDynamicPayloads()
+# radio.setRetries(15, 15)
+
 mesh.setNodeID(0)
-mesh.begin(0x7d, RF24_250KBPS)
-radio.setPALevel(RF24_PA_HIGH) # Power Amplifier
+# mesh.begin(0x7d, RF24_250KBPS)  # Canal prod
+mesh.begin(0x48, RF24_2MBPS)  # Canal test
+# mesh.begin(0x65, RF24_1MBPS)  # Canal dev
+# radio.setPALevel(RF24_PA_HIGH) # Power Amplifier
+radio.setPALevel(RF24_PA_LOW) # Power Amplifier
 radio.printDetails()
 
 
@@ -38,19 +46,16 @@ def transmettre_response_dhcp(node_id_reponse, node_id_assigne):
     for essai in range(0, 20):
         reponse = mesh.write(message, ord('d'), node_id_reponse)
         mesh.update()
+        mesh.DHCP()
         if not reponse:
             print("Erreur transmission reponse %s" % str(reponse))
             mesh.update()
-            time.sleep(0.4)
+            processNetwork()
+            time.sleep(0.01)
         else:
             break
 
-
-while 1:
-    mesh.update()
-    mesh.DHCP()
-
-    while network.available():
+def processNetwork():
         try:
             header, payload = network.peek(8)
             taille_buffer = 24
@@ -65,7 +70,7 @@ while 1:
                 paquet0 = Paquet0(header, payload)
                 message = AssembleurPaquets(paquet0)
                 reception_par_nodeId[fromNodeId] = message
-                print("Paquet0 from node ID: %s, %s" % (str(fromNodeId), str(paquet0)))
+                print("Paquet0 from node ID: %s (mesh addr: %s), %s" % (str(fromNodeId), oct(paquet0.from_node), str(paquet0)))
                 print("Paquet0 bin: %s" % binascii.hexlify(payload))
             elif chr(header.type) == 'p':
                 fromNodeId = mesh.getNodeID(header.from_node)
@@ -106,3 +111,12 @@ while 1:
         except Exception as e:
             print("Erreur reception message: %s" % str(e))
             traceback.print_exc()
+
+
+while 1:
+    mesh.update()
+    mesh.DHCP()
+
+    while network.available():
+        processNetwork()
+
