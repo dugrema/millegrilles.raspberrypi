@@ -58,6 +58,10 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             '--am2302', type=int,
             required=False, help="Active le senseur AM2302 sur pin (en parametre)"
         )
+        self._parser.add_argument(
+            '--timezone', type=str, nargs='1', required=False,
+            required=False, help="Timezone pytz pour l'horloge, ex: America/Halifax"
+        )
 
         # Completer le parsing via superclasse
         super().parse()
@@ -125,8 +129,15 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def inclure_lcd(self):
         print("Activer LCD")
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
+
+        if self._args.timezone is None:
+            timezone = self._args.timezone
+        else:
+            timezone = 'America/Toronto'
+
         self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
             self.contexte,
+            timezone,
             self._args.lcdsenseurs
         )
         self._affichage_lcd.start()
