@@ -39,7 +39,7 @@ class NRF24MeshServer:
         self.__mesh.setNodeID(0)
         self.__mesh.begin(0x7d, RF24.RF24_2MBPS)
 
-        self.__radio.setPALevel(RF24.RF24_PA_HIGH)  # Power Amplifier
+        self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         self.__radio.printDetails()
 
     # Starts thread and runs the process

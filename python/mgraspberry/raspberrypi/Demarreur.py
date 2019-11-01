@@ -59,8 +59,8 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             required=False, help="Active le senseur AM2302 sur pin (en parametre)"
         )
         self._parser.add_argument(
-            '--timezone', type=str, nargs='1', required=False,
-            required=False, help="Timezone pytz pour l'horloge, ex: America/Halifax"
+            '--timezone', type=str, required=False,
+            help="Timezone pytz pour l'horloge, ex: America/Halifax"
         )
 
         # Completer le parsing via superclasse
