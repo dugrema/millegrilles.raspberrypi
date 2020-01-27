@@ -5,6 +5,7 @@ from os import path, urandom
 
 import binascii
 import json
+import datetime
 
 import logging
 
@@ -55,6 +56,9 @@ class NRF24Server:
 
         self.__adresse_serveur = None
         self.__adresse_reseau = None
+        self.__message_beacon = None
+        self.__intervalle_beacon = datetime.timedelta(seconds=5)
+        self.__prochain_beacon = datetime.datetime.utcnow()
 
         self.initialiser_configuration()
 
@@ -89,6 +93,9 @@ class NRF24Server:
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'w') as fichier:
                 json.dump(configuration, fichier)
             self.__configuration = configuration
+
+        # Preparer le paque beacon (il change uniquement si l'adresse du serveur change)
+        self.__message_beacon = PaquetBeaconDHCP(self.__adresse_serveur).encoder()
 
     def open_radio(self):
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
@@ -128,6 +135,11 @@ class NRF24Server:
 
     def __executer_cycle(self):
         self.__process_network_messages()
+
+        if datetime.datetime.utcnow() > self.__prochain_beacon:
+            self.__prochain_beacon = datetime.datetime.utcnow() + self.__intervalle_beacon
+            self.transmettre_beacon()
+
         self.__stop_event.wait(0.005)  # Throttle le service
 
     def run(self):
@@ -199,7 +211,11 @@ class NRF24Server:
                 break
 
     def transmettre_beacon(self):
-
+        self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
+        self.__radio.stopListening()
+        for i in range(0, 5):
+            self.__radio.write(self.__message_beacon, True)
+        self.__radio.stopListening()
 
     # Close all connections and the radio
     def fermer(self):
