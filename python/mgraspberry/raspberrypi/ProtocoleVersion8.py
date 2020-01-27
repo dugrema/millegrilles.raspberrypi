@@ -314,6 +314,7 @@ class PaquetTransmission:
     def encoder(self):
         return None
 
+
 class PaquetBeaconDHCP(PaquetTransmission):
     """
     Paquet transmis a intervalle reguliers sur une adresse de broadcast

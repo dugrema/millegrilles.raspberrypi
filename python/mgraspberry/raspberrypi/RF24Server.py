@@ -9,7 +9,7 @@ import json
 import logging
 
 from mgraspberry.raspberrypi.ProtocoleVersion8 import AssembleurPaquets, Paquet0, PaquetDemandeDHCP, \
-    PaquetReponseDHCP, TYPE_REQUETE_DHCP, TYPE_PAQUET0
+    PaquetBeaconDHCP, PaquetReponseDHCP, TYPE_REQUETE_DHCP, TYPE_PAQUET0
 
 MG_CHANNEL_PROD = 0x5e
 MG_CHANNEL_INT = 0x1f
@@ -50,9 +50,16 @@ class NRF24Server:
         self.thread = None
         self.__configuration = None
 
-        # Charger les fichiers de configuration
         self.__path_configuration = '/opt/millegrilles/etc/%s' % idmg
         self.__reserve_dhcp = ReserveDHCP(path.join(self.__path_configuration, 'rf24dhcp.json'))
+
+        self.__adresse_serveur = None
+        self.__adresse_reseau = None
+
+        self.initialiser_configuration()
+
+    def initialiser_configuration(self):
+        # Charger les fichiers de configuration
         try:
             self.__reserve_dhcp.charger_fichier_dhcp()
         except FileNotFoundError:
@@ -63,14 +70,19 @@ class NRF24Server:
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'r') as fichier:
                 self.__configuration = json.load(fichier)
             self.__logger.info("Charge configuration:\n%s" % json.dumps(self.__configuration))
+
+            adresses = self.__configuration['adresses']
+            self.__adresse_serveur = binascii.unhexlify(adresses['serveur'].encode('utf8'))
+            self.__adresse_reseau = binascii.unhexlify(adresses['reseau'].encode('utf8'))
+
         except FileNotFoundError:
             self.__logger.info("Creation d'une nouvelle configuration pour le serveur")
-            adresse_serveur = urandom(3)  # Generer 3 bytes pour l'adresse serveur receiving pipe
-            adresse_reseau = urandom(4)  # Generer 4 bytes pour l'adresse du reseau
+            self.__adresse_serveur = urandom(3)  # Generer 3 bytes pour l'adresse serveur receiving pipe
+            self.__adresse_reseau = urandom(4)  # Generer 4 bytes pour l'adresse du reseau
             configuration = {
                 'adresses': {
-                    'serveur': binascii.hexlify(adresse_serveur).decode('utf8'),
-                    'reseau': binascii.hexlify(adresse_reseau).decode('utf8'),
+                    'serveur': binascii.hexlify(self.__adresse_serveur).decode('utf8'),
+                    'reseau': binascii.hexlify(self.__adresse_reseau).decode('utf8'),
                 }
             }
             self.__logger.info("Configuration: %s" % str(configuration))
@@ -186,6 +198,9 @@ class NRF24Server:
             else:
                 break
 
+    def transmettre_beacon(self):
+
+
     # Close all connections and the radio
     def fermer(self):
         self.__stop_event.set()
@@ -208,7 +223,7 @@ class ReserveDHCP:
 
     def sauvegarder_fichier_dhcp(self):
         with open(self.__fichier_dhcp, 'w') as fichier:
-            json.dump(fichier, self.__node_id_by_uuid)
+            json.dump(self.__node_id_by_uuid, fichier)
 
     def get_node_id(self, uuid: bytes):
         node_id = self.__node_id_by_uuid.get(uuid)
