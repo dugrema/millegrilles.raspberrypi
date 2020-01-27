@@ -1,9 +1,11 @@
 #!/bin/bash
 
+source /opt/millegrilles/etc/bKKwtXC68HR4TPDzet6zLVq2wPJfc9RiiYLuva/mg-noeud.conf
+
 GITPATH=/home/mathieu/git
-PYTHONPATH=$GITPATH/millegrilles.consignation.python:$GITPATH//millegrilles.raspberrypi/python
+PYTHONPATH=$GITPATH/millegrilles.consignation.python:$GITPATH/millegrilles.raspberrypi/python
 
 export PYTHONPATH
 
-python3 ./mgraspberrypi.py --rf24master --idmg abcd $1
+python3 ./mgraspberrypi.py --debug --rf24master $1
 

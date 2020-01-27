@@ -3,6 +3,7 @@ import traceback
 import logging
 import binascii
 import json
+import os
 
 from uuid import uuid1
 
@@ -34,7 +35,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self.__uuid = None
         self.__config_noeud = None
 
-        self.__idmg = None
+        self.__idmg = os.environ['MG_IDMG']
         self.__environnement = 'prod'
 
     def parse(self):
@@ -63,11 +64,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._parser.add_argument(
             '--int', action="store_true", required=False,
             help="Integration env (canal)"
-        )
-
-        self._parser.add_argument(
-            '--idmg', type=str, required=True,
-            help="IDMG de la MilleGrille en base58"
         )
 
         # Completer le parsing via superclasse

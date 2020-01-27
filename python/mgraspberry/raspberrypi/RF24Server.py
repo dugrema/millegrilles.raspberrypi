@@ -57,25 +57,28 @@ class NRF24Server:
         try:
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'r') as fichier:
                 self.__configuration = json.load(fichier)
+            self.__logger.info("Charge configuration:\n%s" % json.dumps(self.__configuration))
         except FileNotFoundError:
             self.__logger.info("Creation d'une nouvelle configuration pour le serveur")
             adresse_serveur = urandom(3)  # Generer 3 bytes pour l'adresse serveur receiving pipe
             adresse_reseau = urandom(4)  # Generer 4 bytes pour l'adresse du reseau
             configuration = {
                 'adresses': {
-                    'serveur': adresse_serveur,
-                    'reseau': adresse_reseau,
+                    'serveur': binascii.hexlify(adresse_serveur).decode('utf8'),
+                    'reseau': binascii.hexlify(adresse_reseau).decode('utf8'),
                 }
             }
+            self.__logger.info("Configuration: %s" % str(configuration))
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'w') as fichier:
-                json.dump(fichier, configuration)
+                json.dump(configuration, fichier)
+            self.__configuration = configuration
 
     def open_radio(self):
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
 
-        self.__radio.begin(self.__channel, RF24.RF24_150KBPS)
-        # self.__radio.setChannel(0x24)
-        # self.__radio.setDataRate(RF24.RF24_250KBPS)
+        self.__radio.begin()
+        self.__radio.setChannel(self.__channel)
+        self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
         self.__radio.setRetries(15, 1)
