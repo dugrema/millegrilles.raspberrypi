@@ -51,7 +51,7 @@ pipes = [0xABCDABCD71, 0x544d52687C]
 min_payload_size = 4
 max_payload_size = 32
 payload_size_increments_by = 1
-next_payload_size = min_payload_size
+next_payload_size = max_payload_size
 inp_role = 'none'
 send_payload = b'ABCDEFGHIJKLMNOPQRSTUVWXYZ789012'
 millis = lambda: int(round(time.time() * 1000))
@@ -72,12 +72,12 @@ while (inp_role != '0') and (inp_role != '1'):
 
 if inp_role == '0':
     print('Role: Pong Back, awaiting transmission')
-    radio.openWritingPipe(pipes[0])
+    # radio.openWritingPipe(pipes[0])
     radio.openReadingPipe(1, pipes[1])
     radio.startListening()
 else:
     print('Role: Ping Out, starting transmission')
-    radio.openWritingPipe(pipes[1])
+    # radio.openWritingPipe(pipes[1])
     radio.openReadingPipe(1, pipes[0])
 
 radio.printDetails()
@@ -93,35 +93,23 @@ while 1:
         radio.stopListening()
 
         # Take the time, and send it.  This will block until complete
-        print('Now sending length {} ... '.format(next_payload_size), end="")
-        radio.write(send_payload[:next_payload_size])
+        print('Now sending length %d ' % next_payload_size)
+        compteur = 0
+        tranmission = False
+        for i in range(0, 200):
+            transmission = radio.write(send_payload[:next_payload_size])
+            if transmission:
+                print("Nombre paquets avant success: %d" % compteur)
+                break
+            compteur = compteur + 1
+        if not transmission:
+            print("Echec transmission apres %d paquets" % compteur)
 
         # Now, continue listening
         radio.startListening()
 
-        # Wait here until we get a response, or timeout
-        started_waiting_at = millis()
-        timeout = False
-        while (not radio.available()) and (not timeout):
-            if (millis() - started_waiting_at) > 500:
-                timeout = True
 
-        # Describe the results
-        if timeout:
-            print('failed, response timed out.')
-        else:
-            # Grab the response, compare, and send to debugging spew
-            len = radio.getDynamicPayloadSize()
-            receive_payload = radio.read(len)
-
-            # Spew it
-            print('got response size={} value="{}"'.format(len, receive_payload.decode('utf-8')))
-
-        # Update size for next time.
-        next_payload_size += payload_size_increments_by
-        if next_payload_size > max_payload_size:
-            next_payload_size = min_payload_size
-        time.sleep(0.1)
+        time.sleep(2)
     else:
         # if there is data ready
         try_read_data()

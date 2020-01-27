@@ -326,7 +326,7 @@ class PaquetBeaconDHCP(PaquetTransmission):
         self.adresse_serveur = adresse_serveur
 
     def encoder(self):
-        message = pack('=Bs', VERSION_PROTOCOLE, self.adresse_serveur)  # Ajouter idmg plus tard
+        message = pack('=B', VERSION_PROTOCOLE) + self.adresse_serveur  # Ajouter idmg plus tard
         message = message + bytes(32-len(message))  # Padding a 32
         return message
 

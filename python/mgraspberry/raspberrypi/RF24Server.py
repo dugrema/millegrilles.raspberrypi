@@ -57,7 +57,7 @@ class NRF24Server:
         self.__adresse_serveur = None
         self.__adresse_reseau = None
         self.__message_beacon = None
-        self.__intervalle_beacon = datetime.timedelta(seconds=5)
+        self.__intervalle_beacon = datetime.timedelta(seconds=2)
         self.__prochain_beacon = datetime.datetime.utcnow()
 
         self.initialiser_configuration()
@@ -98,11 +98,12 @@ class NRF24Server:
         self.__message_beacon = PaquetBeaconDHCP(self.__adresse_serveur).encoder()
 
     def open_radio(self):
-        self.__logger.debug("Ouverture radio")
+        self.__logger.info("Ouverture radio sur canal %d" % self.__channel)
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
 
         self.__radio.begin()
-        self.__radio.setChannel(self.__channel)
+
+        self.__radio.setChannel(0x24) # (self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
@@ -110,15 +111,20 @@ class NRF24Server:
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
+        self.__radio.openWritingPipe(self.__adresse_serveur)
+        self.__radio.openReadingPipe(1, self.__adresse_reseau + bytes(0x0) + bytes(0x0))
+
+        print("Details radio")
         self.__radio.printDetails()
+        self.__logger.info("Radio ouverte")
 
     # Starts thread and runs the process
     def start(self, callback_soumettre):
         self.open_radio()
         self._callback_soumettre = callback_soumettre
-        self.thread = Thread(target=self.run)
+        self.thread = Thread(name="RF24Server", target=self.run)
         self.thread.start()
-        self.__logger.info("NRF24hServer: nRF24L thread started successfully")
+        self.__logger.info("RF24Server: thread started successfully")
 
     def __process_network_messages(self):
         while self.__radio.available():
@@ -215,11 +221,12 @@ class NRF24Server:
                 break
 
     def transmettre_beacon(self):
+        self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'));
         self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
         self.__radio.stopListening()
-        for i in range(0, 5):
-            self.__radio.write(self.__message_beacon, True)
-        self.__radio.stopListening()
+        # for i in range(0, 3):
+        self.__radio.write(self.__message_beacon, True)
+        self.__radio.startListening()
 
     # Close all connections and the radio
     def fermer(self):
