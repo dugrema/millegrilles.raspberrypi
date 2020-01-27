@@ -53,6 +53,11 @@ class NRF24Server:
         # Charger les fichiers de configuration
         self.__path_configuration = '/opt/millegrilles/etc/%s' % idmg
         self.__reserve_dhcp = ReserveDHCP(path.join(self.__path_configuration, 'rf24dhcp.json'))
+        try:
+            self.__reserve_dhcp.charger_fichier_dhcp()
+        except FileNotFoundError:
+            self.__logger.info("Initialiser fichier DHCP")
+            self.__reserve_dhcp.sauvegarder_fichier_dhcp()
 
         try:
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'r') as fichier:
