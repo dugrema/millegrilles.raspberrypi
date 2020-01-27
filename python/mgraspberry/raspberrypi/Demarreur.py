@@ -66,7 +66,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         )
 
         self._parser.add_argument(
-            '--idmg', type=str, nargs='1', required=True,
+            '--idmg', type=str, required=True,
             help="IDMG de la MilleGrille en base58"
         )
 
