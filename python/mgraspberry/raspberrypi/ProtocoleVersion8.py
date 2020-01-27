@@ -5,10 +5,15 @@ import datetime
 
 VERSION_PROTOCOLE = 8
 
+TYPE_PAQUET0 = 0x0
 TYPE_REQUETE_DHCP = 0x1
 TYPE_REPONSE_DHCP = 0x2
+TYPE_BEACON_DHCP = 0x3
 
 class Paquet:
+    """
+    Paque de donnees recues
+    """
 
     def __init__(self, data: bytes):
         self.__data = data
@@ -53,6 +58,9 @@ class Paquet0(Paquet):
             self.nombrePaquets
         )
 
+    def assembler(self):
+        return dict()
+
 
 class PaquetDemandeDHCP(Paquet):
 
@@ -64,6 +72,9 @@ class PaquetDemandeDHCP(Paquet):
     def _parse(self):
         super()._parse()
         self.uuid = bytes(self.data[4:20])
+
+    def assembler(self):
+        return dict()
 
 
 class PaquetPayload(Paquet):
@@ -303,14 +314,30 @@ class PaquetTransmission:
     def encoder(self):
         return None
 
+class PaquetBeaconDHCP(PaquetTransmission):
+    """
+    Paquet transmis a intervalle reguliers sur une adresse de broadcast
+    Contient l'information du serveur (adresse pipe, IDMG)
+    """
+
+    def __init__(self, adresse_serveur: bytes):
+        super().__init__(TYPE_BEACON_DHCP)
+        self.adresse_serveur = adresse_serveur
+
+    def encoder(self):
+        message = pack('=Bs', VERSION_PROTOCOLE, self.adresse_serveur)  # Ajouter idmg plus tard
+        message = message + bytes(32-len(message))  # Padding a 32
+        return message
+
 
 class PaquetReponseDHCP(PaquetTransmission):
 
-    def __init__(self, node_id: int):
+    def __init__(self, node_id: int, node_uuid: bytes):
         super().__init__(TYPE_REPONSE_DHCP)
         self.node_id = node_id
+        self.node_uuid = node_uuid
 
     def encoder(self):
-        message = pack('=BHB', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP, self.node_id)
+        message = pack('=BHBs', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP, self.node_id, self.node_uuid)
         message = message + bytes(32-len(message))  # Padding a 32
         return message

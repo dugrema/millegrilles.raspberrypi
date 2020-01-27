@@ -1,22 +1,12 @@
 # Module qui permet de demarrer les appareils sur un Raspberry Pi
 import traceback
-import argparse
 import logging
 import binascii
 import json
 
 from uuid import uuid1
 
-from threading import Event
-from pika.exceptions import ChannelClosed
-
-from millegrilles.dao.Configuration import TransactionConfiguration
-from millegrilles.dao.MessageDAO import PikaDAO, ExceptionConnectionFermee
-from millegrilles.dao.DocumentDAO import MongoDAO
-from millegrilles.domaines.SenseursPassifs import ProducteurTransactionSenseursPassifs
 from millegrilles.noeuds.Noeud import DemarreurNoeud
-
-from millegrilles.util.Daemon import Daemon
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +28,14 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
 
         self._affichage_lcd = None
-        self._rf24_mesh_master = None
+        self._rf24_server = None
         self._am2302 = None
 
         self.__uuid = None
         self.__config_noeud = None
+
+        self.__idmg = None
+        self.__environnement = 'prod'
 
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
@@ -61,6 +54,20 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._parser.add_argument(
             '--timezone', type=str, required=False,
             help="Timezone pytz pour l'horloge, ex: America/Halifax"
+        )
+
+        self._parser.add_argument(
+            '--dev', action="store_true", required=False,
+            help="Developpement env (canal)"
+        )
+        self._parser.add_argument(
+            '--int', action="store_true", required=False,
+            help="Integration env (canal)"
+        )
+
+        self._parser.add_argument(
+            '--idmg', type=str, nargs='1', required=True,
+            help="IDMG de la MilleGrille en base58"
         )
 
         # Completer le parsing via superclasse
@@ -108,9 +115,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def fermer(self):
         super().fermer()
 
-        if self._rf24_mesh_master is not None:
+        if self._rf24_server is not None:
             try:
-                self._rf24_mesh_master.fermer()
+                self._rf24_server.fermer()
             except Exception as enrf:
                 print("erreur fermeture NRF24L01: %s" % str(enrf))
 
@@ -145,9 +152,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def inclure_nrf24l01(self):
         print("Activer RF24 Mesh Master")
-        from mgraspberry.raspberrypi.RF24Mesh import NRF24MeshServer
-        self._rf24_mesh_master = NRF24MeshServer()
-        self._rf24_mesh_master.start(self.transmettre_lecture_callback)
+        from mgraspberry.raspberrypi.RF24Server import NRF24Server
+        self._rf24_server = NRF24Server(self.__idmg, self.__environnement)
+        self._rf24_server.start(self.transmettre_lecture_callback)
         self._chargement_reussi = True
 
     def inclure_am2302(self):
