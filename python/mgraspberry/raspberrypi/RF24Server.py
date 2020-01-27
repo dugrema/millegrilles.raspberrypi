@@ -98,6 +98,7 @@ class NRF24Server:
         self.__message_beacon = PaquetBeaconDHCP(self.__adresse_serveur).encoder()
 
     def open_radio(self):
+        self.__logger.debug("Ouverture radio")
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
 
         self.__radio.begin()
@@ -117,7 +118,7 @@ class NRF24Server:
         self._callback_soumettre = callback_soumettre
         self.thread = Thread(target=self.run)
         self.thread.start()
-        self.__logger.info("NRF24MeshServer: nRF24L thread started successfully")
+        self.__logger.info("NRF24hServer: nRF24L thread started successfully")
 
     def __process_network_messages(self):
         while self.__radio.available():
@@ -143,6 +144,7 @@ class NRF24Server:
         self.__stop_event.wait(0.005)  # Throttle le service
 
     def run(self):
+        self.__logger.debug("Run Thread RF24Server")
 
         # Boucle principale d'execution
         while not self.__stop_event.is_set():
@@ -151,6 +153,8 @@ class NRF24Server:
             except Exception as e:
                 self.__logger.exception("NRF24Server: Error processing update ou DHCP")
                 self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
+
+        self.__logger.debug("Fin Run Thread RF24Server")
 
     def process_dhcp_request(self, node_id, payload):
         paquet = PaquetDemandeDHCP(payload, node_id)
