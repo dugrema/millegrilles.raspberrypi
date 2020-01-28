@@ -14,7 +14,7 @@ from mgraspberry.raspberrypi.ProtocoleVersion8 import AssembleurPaquets, Paquet0
     PaquetBeaconDHCP, PaquetReponseDHCP, TYPE_REQUETE_DHCP, TYPE_PAQUET0
 
 MG_CHANNEL_PROD = 0x5e
-MG_CHANNEL_INT = 0x1f
+MG_CHANNEL_INT = 0x24
 MG_CHANNEL_DEV = 0x0c
 
 ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
@@ -104,7 +104,7 @@ class NRF24Server:
 
         self.__radio.begin()
 
-        self.__radio.setChannel(0x24) # (self.__channel)
+        self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         # self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         self.__radio.setPALevel(RF24.RF24_PA_LOW)  # Power Amplifier

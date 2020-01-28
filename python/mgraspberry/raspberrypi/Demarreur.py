@@ -86,6 +86,13 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self.__config_noeud = config_noeud
         self.__uuid = config_noeud['uuid']
 
+        if self._args.dev:
+            self.__environnement = 'dev'
+        elif self._args.int:
+            self.__environnement = 'int'
+        else:
+            self.__environnement = 'prod'
+
         # Charger modules specifiques au raspberrypi.
         if self._args.lcdsenseurs:
             try:
