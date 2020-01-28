@@ -220,7 +220,7 @@ class NRF24Server:
 
     def transmettre_response_dhcp(self, node_id_assigne, node_uuid):
 
-        paquet = PaquetReponseDHCP(node_id_assigne, node_uuid)
+        paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
         message = paquet.encoder()
         for essai in range(0, 4):
             reponse = self.__radio.write(message)
