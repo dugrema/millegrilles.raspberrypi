@@ -343,6 +343,6 @@ class PaquetReponseDHCP(PaquetTransmission):
     def encoder(self):
         adresse_node = self.__reseau + bytes(self.node_id)
         message = pack('=BH', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP)
-        message = message + adresse_node + self.node_uuid
+        message = message + adresse_node + bytearray([self.node_uuid])
         message = message + bytes(32-len(message))  # Padding a 32
         return message
