@@ -262,7 +262,7 @@ class ReserveDHCP:
         with open(self.__fichier_dhcp, 'r') as fichier:
             node_id_str_by_uuid = json.load(fichier)
 
-        for uuid_str, value in node_id_str_by_uuid:
+        for uuid_str, value in node_id_str_by_uuid.items():
             uuid_bytes = binascii.unhexlify(uuid_str.encode('utf8'))
             self.__node_id_by_uuid[uuid_bytes] = value
 
@@ -270,7 +270,7 @@ class ReserveDHCP:
 
         # Changer la cle de bytes a str
         node_id_str_by_uuid = dict()
-        for uuid_bytes, value in self.__node_id_by_uuid:
+        for uuid_bytes, value in self.__node_id_by_uuid.items():
             uuid_str = binascii.hexlify(uuid_bytes).decode('utf8')
             node_id_str_by_uuid[uuid_str] = value
 
