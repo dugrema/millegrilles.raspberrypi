@@ -251,6 +251,7 @@ class NRF24Server:
         adresse_no = struct.unpack('Q', adresse_paddee)[0]
         return adresse_no
 
+
 class ReserveDHCP:
 
     def __init__(self, fichier_dhcp: str):
@@ -259,11 +260,22 @@ class ReserveDHCP:
 
     def charger_fichier_dhcp(self):
         with open(self.__fichier_dhcp, 'r') as fichier:
-            self.__node_id_by_uuid = json.load(fichier)
+            node_id_str_by_uuid = json.load(fichier)
+
+        for uuid_str, value in node_id_str_by_uuid:
+            uuid_bytes = binascii.unhexlify(uuid_str.encode('utf8'))
+            self.__node_id_by_uuid[uuid_bytes] = value
 
     def sauvegarder_fichier_dhcp(self):
+
+        # Changer la cle de bytes a str
+        node_id_str_by_uuid = dict()
+        for uuid_bytes, value in self.__node_id_by_uuid:
+            uuid_str = binascii.hexlify(uuid_bytes).decode('utf8')
+            node_id_str_by_uuid[uuid_str] = value
+
         with open(self.__fichier_dhcp, 'w') as fichier:
-            json.dump(self.__node_id_by_uuid, fichier)
+            json.dump(node_id_str_by_uuid, fichier)
 
     def get_node_id(self, uuid: bytes):
         node_id = self.__node_id_by_uuid.get(uuid)
@@ -320,3 +332,19 @@ class ReserveDHCP:
                 return node_id
 
         return None
+
+
+class DHCPDictEncoder(json.JSONEncoder):
+    """
+    Encode les bytes
+    """
+
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return int(binascii.hexlify())
+
+        # Let the base class default method raise the TypeError
+        try:
+            return json.JSONEncoder.default(self, obj)
+        except TypeError:
+            return str(obj)
