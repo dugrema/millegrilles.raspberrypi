@@ -108,7 +108,6 @@ while 1:
         # Now, continue listening
         radio.startListening()
 
-
         time.sleep(2)
     else:
         # if there is data ready

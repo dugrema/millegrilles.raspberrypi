@@ -6,6 +6,7 @@ from os import path, urandom
 import binascii
 import json
 import datetime
+import struct 
 
 import logging
 
@@ -105,14 +106,19 @@ class NRF24Server:
 
         self.__radio.setChannel(0x24) # (self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
-        self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
+        # self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
+        self.__radio.setPALevel(RF24.RF24_PA_LOW)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
         self.__radio.setRetries(15, 1)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
-        self.__radio.openWritingPipe(self.__adresse_serveur)
-        self.__radio.openReadingPipe(1, self.__adresse_reseau + bytes(0x0) + bytes(0x0))
+        # self.__radio.openWritingPipe(self.__adresse_serveur)
+        # self.__radio.openReadingPipe(1, self.__adresse_reseau + bytes(0x0) + bytes(0x0))
+        addresseServeur = bytes(b'\x00\x00') + self.__adresse_serveur
+        addresseServeur = self.formatAdresse(addresseServeur)
+        self.__radio.openReadingPipe(1, addresseServeur)
+        self.__logger.info("Address reading pipe 1: %s" % hex(addresseServeur))
 
         print("Details radio")
         self.__radio.printDetails()
@@ -128,12 +134,11 @@ class NRF24Server:
 
     def __process_network_messages(self):
         while self.__radio.available():
-
             try:
                 taille_buffer = self.__radio.getDynamicPayloadSize()
                 payload = self.__radio.read(taille_buffer)
 
-                self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
+                self.__logger.info("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
                 self.process_paquet_payload(payload)
 
             except Exception as e:
@@ -147,7 +152,10 @@ class NRF24Server:
             self.__prochain_beacon = datetime.datetime.utcnow() + self.__intervalle_beacon
             self.transmettre_beacon()
 
-        self.__stop_event.wait(0.005)  # Throttle le service
+        compteur = 0
+        while not self.__radio.available() and compteur < 500:
+            self.__stop_event.wait(0.002)  # Throttle le service
+            compteur = compteur + 1
 
     def run(self):
         self.__logger.debug("Run Thread RF24Server")
@@ -184,7 +192,8 @@ class NRF24Server:
         version = payload[0]
         if version == 8:
             from_node_id = payload[1]
-            type_paquet = payload[2:4]
+            type_paquet = struct.unpack('H', payload[1:3])[0]
+            self.__logger.info("Type paquet: %d" % type_paquet) 
 
             if type_paquet == TYPE_PAQUET0:
                 # Paquet0
@@ -236,7 +245,11 @@ class NRF24Server:
             self.__radio = None
         except Exception as e:
             self.__logger.warning("NRF24MeshServer: Error closing radio: %s" % str(e))
-
+            
+    def formatAdresse(self, adresse: bytes):
+        adresse_paddee = adresse + bytes(8-len(adresse))
+        adresse_no = struct.unpack('Q', adresse_paddee)[0]
+        return adresse_no
 
 class ReserveDHCP:
 
