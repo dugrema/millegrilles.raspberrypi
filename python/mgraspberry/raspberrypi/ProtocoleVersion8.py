@@ -65,8 +65,7 @@ class Paquet0(Paquet):
 
 class PaquetDemandeDHCP(Paquet):
 
-    def __init__(self, data: bytes, from_node_id):
-        self.node_id_reponse = from_node_id
+    def __init__(self, data: bytes):
         self.__node_uuid = None
         super().__init__(data)
 

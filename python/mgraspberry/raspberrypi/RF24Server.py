@@ -170,16 +170,15 @@ class NRF24Server:
 
         self.__logger.debug("Fin Run Thread RF24Server")
 
-    def process_dhcp_request(self, node_id, payload):
-        paquet = PaquetDemandeDHCP(payload, node_id)
+    def process_dhcp_request(self, payload):
+        paquet = PaquetDemandeDHCP(payload)
 
         # On utilise le node id actuel (pour repondre) comme suggestion
-        node_id_suggere = paquet.node_id_reponse
-        node_id_reserve = self.__reserve_dhcp.reserver(paquet.uuid, node_id_suggere)
-        self.__logger.debug("Transmission DHCP reponse nodeId: %d (reponse vers %d)" % (node_id_reserve, node_id_suggere))
+        node_id_reserve = self.__reserve_dhcp.reserver(paquet.uuid)
+        self.__logger.debug("Transmission DHCP reponse nodeId: %d (reponse vers %s)" % (node_id_reserve, str(paquet.uuid)))
 
         # On transmet la reponse
-        self.transmettre_response_dhcp(node_id_suggere, node_id_reserve)
+        self.transmettre_response_dhcp(node_id_reserve, paquet.uuid)
 
     def process_paquet0(self, node_id, payload):
         paquet0 = Paquet0(payload)
@@ -199,7 +198,7 @@ class NRF24Server:
                 # Paquet0
                 self.process_paquet0(from_node_id, payload)
             elif type_paquet == TYPE_REQUETE_DHCP:
-                self.process_dhcp_request(from_node_id, payload)
+                self.process_dhcp_request(payload)
             else:
                 assembleur = self.__assembleur_par_nodeId.get(from_node_id)
                 if assembleur is not None:
@@ -231,7 +230,7 @@ class NRF24Server:
                 break
 
     def transmettre_beacon(self):
-        self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'));
+        self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'))
         self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
         self.__radio.stopListening()
         # for i in range(0, 3):
@@ -282,36 +281,10 @@ class ReserveDHCP:
         node_id = self.__node_id_by_uuid.get(uuid)
         return node_id
 
-    def reserver(self, uuid: bytes, node_id_suggere: int):
-        assigner_nouvelle_adresse = True
+    def reserver(self, uuid: bytes):
         node_id = self.get_node_id(uuid)
-        suggestion_deja_assigne = node_id_suggere in self.__node_id_by_uuid.values()
-        if node_id_suggere is not None:
-            if node_id_suggere == 1:
-                # On assigne nouvelle adresse
-                assigner_nouvelle_adresse = True
-            elif node_id == node_id_suggere:
-                # Rien a faire
-                assigner_nouvelle_adresse = False
-            elif suggestion_deja_assigne:
-                # La suggestion ne match pas le noeud existant et node_id deja assigne.
-                # On determine un nouvel ID.
-                assigner_nouvelle_adresse = True
-            elif node_id is None:
-                # Ok, on assigne le node id suggere
-                assigner_nouvelle_adresse = False
-                node_id = node_id_suggere
-            elif node_id_suggere != node_id and node_id not in self.__node_id_by_uuid.values():
-                # On change l'adresse interne, efface l'ancienne
-                # On permet au noeud de garder cette adresse (differente)
-                del self.__node_id_by_uuid[node_id]
-                node_id = node_id_suggere
-                assigner_nouvelle_adresse = False
-            else:
-                # Le node ne correspond pas au UUID, on assigne un nouveau lease
-                assigner_nouvelle_adresse = True
 
-        if assigner_nouvelle_adresse:
+        if node_id is None:
             node_id = self._identifier_nouvelle_adresse()
 
         if node_id is not None:
@@ -333,19 +306,3 @@ class ReserveDHCP:
                 return node_id
 
         return None
-
-
-class DHCPDictEncoder(json.JSONEncoder):
-    """
-    Encode les bytes
-    """
-
-    def default(self, obj):
-        if isinstance(obj, bytes):
-            return int(binascii.hexlify())
-
-        # Let the base class default method raise the TypeError
-        try:
-            return json.JSONEncoder.default(self, obj)
-        except TypeError:
-            return str(obj)
