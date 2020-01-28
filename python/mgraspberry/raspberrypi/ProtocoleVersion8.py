@@ -10,6 +10,7 @@ TYPE_REQUETE_DHCP = 0x1
 TYPE_REPONSE_DHCP = 0x2
 TYPE_BEACON_DHCP = 0x3
 
+
 class Paquet:
     """
     Paque de donnees recues
@@ -71,7 +72,7 @@ class PaquetDemandeDHCP(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = bytes(self.data[4:20])
+        self.uuid = bytes(self.data[3:19])
 
     def assembler(self):
         return dict()
@@ -333,12 +334,15 @@ class PaquetBeaconDHCP(PaquetTransmission):
 
 class PaquetReponseDHCP(PaquetTransmission):
 
-    def __init__(self, node_id: int, node_uuid: bytes):
+    def __init__(self, reseau: bytes, node_id: int, node_uuid: bytes):
         super().__init__(TYPE_REPONSE_DHCP)
+        self.__reseau = reseau
         self.node_id = node_id
         self.node_uuid = node_uuid
 
     def encoder(self):
-        message = pack('=BHBs', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP, self.node_id, self.node_uuid)
+        adresse_node = self.__reseau + bytes(self.node_id)
+        message = pack('=BH', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP)
+        message = message + adresse_node + self.node_uuid
         message = message + bytes(32-len(message))  # Padding a 32
         return message
