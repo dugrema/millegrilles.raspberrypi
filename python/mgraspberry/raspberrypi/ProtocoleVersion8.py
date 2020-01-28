@@ -341,8 +341,9 @@ class PaquetReponseDHCP(PaquetTransmission):
         self.node_uuid = node_uuid
 
     def encoder(self):
-        adresse_node = self.__reseau + bytes(self.node_id)
+        adresse_node = pack('=B', self.node_id) + self.__reseau
         message = pack('=BH', VERSION_PROTOCOLE, TYPE_REPONSE_DHCP)
-        message = message + adresse_node + bytearray([self.node_uuid])
+        message = message + adresse_node
+        # message = message + self.node_uuid
         message = message + bytes(32-len(message))  # Padding a 32
         return message

@@ -222,6 +222,7 @@ class NRF24Server:
 
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
         message = paquet.encoder()
+        self.__logger.info("Transmission paquet DHCP repose nodeId:%d\n%s" % (node_id_assigne, binascii.hexlify(message).decode('utf8')))
         for essai in range(0, 4):
             reponse = self.__radio.write(message)
             if not reponse:
