@@ -74,7 +74,7 @@ class NRF24Server:
         try:
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'r') as fichier:
                 self.__configuration = json.load(fichier)
-            self.__logger.info("Charge configuration:\n%s" % json.dumps(self.__configuration))
+            self.__logger.info("Charge configuration:\n%s" % json.dumps(self.__configuration, indent=4))
 
             adresses = self.__configuration['adresses']
             self.__adresse_serveur = binascii.unhexlify(adresses['serveur'].encode('utf8'))
@@ -90,7 +90,7 @@ class NRF24Server:
                     'reseau': binascii.hexlify(self.__adresse_reseau).decode('utf8'),
                 }
             }
-            self.__logger.info("Configuration: %s" % str(configuration))
+            self.__logger.debug("Configuration: %s" % str(configuration))
             with open(path.join(self.__path_configuration, 'rf24server.json'), 'w') as fichier:
                 json.dump(configuration, fichier)
             self.__configuration = configuration
@@ -120,7 +120,6 @@ class NRF24Server:
         self.__radio.openReadingPipe(1, addresseServeur)
         self.__logger.info("Address reading pipe 1: %s" % hex(addresseServeur))
 
-        print("Details radio")
         self.__radio.printDetails()
         self.__logger.info("Radio ouverte")
 
@@ -138,7 +137,7 @@ class NRF24Server:
                 taille_buffer = self.__radio.getDynamicPayloadSize()
                 payload = self.__radio.read(taille_buffer)
 
-                self.__logger.info("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
+                self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
                 self.process_paquet_payload(payload)
 
             except Exception as e:
@@ -184,15 +183,15 @@ class NRF24Server:
         paquet0 = Paquet0(payload)
         message = AssembleurPaquets(paquet0)
         self.__assembleur_par_nodeId[node_id] = message
-        self.__logger.debug("Paquet0 from node ID: %s, %s" % (str(node_id), str(paquet0)))
-        self.__logger.debug("Paquet0 bin: %s" % binascii.hexlify(payload))
+        # self.__logger.debug("Paquet0 from node ID: %s, %s" % (str(node_id), str(paquet0)))
+        # self.__logger.debug("Paquet0 bin: %s" % binascii.hexlify(payload))
 
     def process_paquet_payload(self, payload):
         version = payload[0]
         if version == 8:
             from_node_id = payload[1]
             type_paquet = struct.unpack('H', payload[2:4])[0]
-            self.__logger.info("Type paquet: %d" % type_paquet) 
+            self.__logger.debug("Type paquet: %d" % type_paquet) 
 
             if type_paquet == TYPE_PAQUET0:
                 # Paquet0
@@ -205,8 +204,8 @@ class NRF24Server:
                     complet = assembleur.recevoir(payload)
                     if complet:
                         message = assembleur.assembler()
-                        message_json = json.dumps(message, indent=2)
-                        self.__logger.info("Message complet: \n%s" % message_json)
+                        # message_json = json.dumps(message, indent=2)
+                        # self.__logger.debug("Message complet: \n%s" % message_json)
 
                         # Transmettre message recu a MQ
                         self._callback_soumettre(message)
@@ -221,16 +220,16 @@ class NRF24Server:
 
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
         message = paquet.encoder()
-        self.__logger.info("Transmission paquet DHCP repose nodeId:%d\n%s" % (node_id_assigne, binascii.hexlify(message).decode('utf8')))
+        self.__logger.debug("Transmission paquet DHCP reponse nodeId:%d\n%s" % (node_id_assigne, binascii.hexlify(message).decode('utf8')))
         for essai in range(0, 4):
             reponse = self.__radio.write(message)
             if not reponse:
-                self.__logger.warning("Erreur transmission reponse %s" % str(reponse))
+                self.__logger.debug("Erreur transmission reponse %s" % str(reponse))
             else:
                 break
 
     def transmettre_beacon(self):
-        self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'))
+        # self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'))
         self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
         self.__radio.stopListening()
         # for i in range(0, 3):
