@@ -34,8 +34,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
         self.__uuid = None
         self.__config_noeud = None
-
-        self.__idmg = self._contexte.idmg
+        self.__idmg = None
         self.__environnement = 'prod'
 
     def parse(self):
@@ -71,6 +70,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def setup_modules(self):
         super().setup_modules()
+        self.__idmg = self._contexte.idmg
 
         try:
             with open('/opt/millegrilles/etc/noeud.json', 'r') as fichier:
