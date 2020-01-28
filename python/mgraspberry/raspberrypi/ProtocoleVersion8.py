@@ -49,8 +49,8 @@ class Paquet0(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = self.data[6:22]
-        self.nombrePaquets = unpack('h', self.data[4:6])[0]
+        self.uuid = self.data[8:24]
+        self.nombrePaquets = unpack('h', self.data[6:8])[0]
 
     def __str__(self):
         return 'Paquet0 UUID: %s, type: %s, nombrePaquets: %s' % (
@@ -326,7 +326,7 @@ class PaquetBeaconDHCP(PaquetTransmission):
         self.adresse_serveur = adresse_serveur
 
     def encoder(self):
-        message = pack('=B', VERSION_PROTOCOLE) + self.adresse_serveur  # Ajouter idmg plus tard
+        message = pack('=BH', VERSION_PROTOCOLE, TYPE_BEACON_DHCP) + self.adresse_serveur  # Ajouter idmg plus tard
         message = message + bytes(32-len(message))  # Padding a 32
         return message
 

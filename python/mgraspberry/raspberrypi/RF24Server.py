@@ -191,7 +191,7 @@ class NRF24Server:
         version = payload[0]
         if version == 8:
             from_node_id = payload[1]
-            type_paquet = struct.unpack('H', payload[1:3])[0]
+            type_paquet = struct.unpack('H', payload[2:4])[0]
             self.__logger.info("Type paquet: %d" % type_paquet) 
 
             if type_paquet == TYPE_PAQUET0:
@@ -206,7 +206,7 @@ class NRF24Server:
                     if complet:
                         message = assembleur.assembler()
                         message_json = json.dumps(message, indent=2)
-                        self.__logger.debug("Message complet: \n%s" % message_json)
+                        self.__logger.info("Message complet: \n%s" % message_json)
 
                         # Transmettre message recu a MQ
                         self._callback_soumettre(message)
