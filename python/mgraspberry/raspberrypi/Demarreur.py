@@ -35,7 +35,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self.__uuid = None
         self.__config_noeud = None
 
-        self.__idmg = os.environ['MG_IDMG']
+        self.__idmg = self._contexte.idmg
         self.__environnement = 'prod'
 
     def parse(self):
