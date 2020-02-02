@@ -1,4 +1,7 @@
 import RF24
+import RPi.GPIO as GPIO
+
+GPIO.setmode(GPIO.BCM)
 
 from threading import Thread, Event
 from os import path, urandom
@@ -6,7 +9,7 @@ from os import path, urandom
 import binascii
 import json
 import datetime
-import struct 
+import struct
 
 import logging
 
@@ -123,6 +126,9 @@ class NRF24Server:
         self.__radio.printDetails()
         self.__logger.info("Radio ouverte")
 
+        GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.add_event_detect(24, GPIO.FALLING, callback=self.__process_network_messages)
+
     # Starts thread and runs the process
     def start(self, callback_soumettre):
         self.open_radio()
@@ -131,7 +137,7 @@ class NRF24Server:
         self.thread.start()
         self.__logger.info("RF24Server: thread started successfully")
 
-    def __process_network_messages(self):
+    def __process_network_messages(self, channel):
         while self.__radio.available():
             try:
                 taille_buffer = self.__radio.getDynamicPayloadSize()
@@ -145,16 +151,16 @@ class NRF24Server:
                 self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
 
     def __executer_cycle(self):
-        self.__process_network_messages()
+        # self.__process_network_messages()
 
         if datetime.datetime.utcnow() > self.__prochain_beacon:
             self.__prochain_beacon = datetime.datetime.utcnow() + self.__intervalle_beacon
             self.transmettre_beacon()
 
-        compteur = 0
-        while not self.__radio.available() and compteur < 500:
-            self.__stop_event.wait(0.002)  # Throttle le service
-            compteur = compteur + 1
+        # compteur = 0
+        #while not self.__radio.available() and compteur < 500:
+        self.__stop_event.wait(2.0)  # Throttle le service
+        #    compteur = compteur + 1
 
     def run(self):
         self.__logger.debug("Run Thread RF24Server")
@@ -167,6 +173,7 @@ class NRF24Server:
                 self.__logger.exception("NRF24Server: Error processing update ou DHCP")
                 self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
 
+        GPIO.cleanup()
         self.__logger.debug("Fin Run Thread RF24Server")
 
     def process_dhcp_request(self, payload):
