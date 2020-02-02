@@ -126,6 +126,7 @@ class NRF24Server:
         self.__radio.printDetails()
         self.__logger.info("Radio ouverte")
 
+        # Connecter IRQ pour reception paquets
         GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.add_event_detect(24, GPIO.FALLING, callback=self.__process_network_messages)
 
