@@ -57,16 +57,13 @@ preparer_opt() {
   set -e  # Arreter execution sur erreur
   echo "[INFO] Preparer $MILLEGRILLES_PATH"
   sudo mkdir -p $MILLEGRILLES_BIN
-  echo 2
   sudo mkdir -p $MILLEGRILLES_ETC
-  echo 3
   # sudo chmod -R 2755 $MILLEGRILLES_PATH
-  echo 4
+
   sudo cp -R $REP_INSTALL/etc/* $MILLEGRILLES_ETC
-  echo 5
   sudo cp -R $REP_INSTALL/bin/* $MILLEGRILLES_BIN
-  echo 6
-  # Repertoire de la miilegrille
+
+  # Repertoire de la millegrille
   sudo mkdir -p /var/opt/millegrilles/$IDMG/etc
 
   echo "[OK] $MILLEGRILLES_PATH pret"
@@ -76,13 +73,13 @@ preparer_service() {
   sudo cp $REP_INSTALL/etc/millegrilles.rpi.service /lib/systemd
   cat $REP_INSTALL/etc/millegrilles.rpi.service | \
       sed s/\$\{IDMG\}/$IDMG/g | \
-      sudo tee /etc/systemd/systemd/millegrilles.rpi.service
+      sudo tee /etc/systemd/system/millegrilles.rpi.service
   sudo systemctl daemon-reload
 }
 
 creer_configuration_json() {
   echo "[INFO] Creation du fichier de configuration /opt/millegrilles/etc/noeud_cle.json"
-  cat etc/mg-noeud.conf | sed s/\$\{IDMG\}/$IDMG/g | sudo tee /var/opt/millegrilles/$IDMG/etc/mg-noeud.conf
+  cat $REP_INSTALL/etc/mg-noeud.conf | sed s/\$\{IDMG\}/$IDMG/g | sudo tee /var/opt/millegrilles/$IDMG/etc/mg-noeud.conf
   echo "[OK] Fichier de configuration cree"
 }
 
