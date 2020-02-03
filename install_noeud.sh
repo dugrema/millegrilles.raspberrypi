@@ -68,7 +68,7 @@ preparer_opt() {
 }
 
 preparer_service() {
-  sudo cp etc/millegrilles.noeud.service /lib/systemd
+  sudo cp etc/millegrilles.rpi.service /lib/systemd
   sudo systemctl daemon-reload
 }
 
