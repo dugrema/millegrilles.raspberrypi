@@ -256,7 +256,6 @@ class AssembleurPaquets:
         :return: True si tous les paquets ont ete recus
         """
         paquet = AssembleurPaquets.map(header, data)
-        print("Paquet: %s" % str(paquet))
         self.__paquets[paquet.no_paquet] = paquet
 
         if self.__paquet0.nombrePaquets == len(self.__paquets):

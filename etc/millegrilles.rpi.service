@@ -1,0 +1,13 @@
+[Unit]
+Description=Service de noeud d'une MilleGrille.
+
+[Service]
+Type=forking
+PIDFile=/run/mg-noeud.pid
+ExecStart=/opt/millegrilles/bin/mgraspberrypi.sh ${IDMG} --rf24master start
+ExecStop=/opt/millegrilles/bin/mgraspberrypi.sh ${IDMG} stop
+Restart=always
+RestartSec=180s
+
+[Install]
+WantedBy=multi-user.target

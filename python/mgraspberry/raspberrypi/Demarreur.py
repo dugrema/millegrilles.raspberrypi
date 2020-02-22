@@ -98,22 +98,22 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             try:
                 self.inclure_lcd()
             except Exception as erreur_lcd:
-                print("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
-                traceback.print_exc()
+                logger.exception("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
+                # traceback.print_exc()
 
         if self._args.rf24master:
             try:
                 self.inclure_nrf24l01()
             except Exception as erreur_nrf24:
-                print("Erreur chargement hub nRF24L01: %s" % str(erreur_nrf24))
-                traceback.print_exc()
+                logger.exception("Erreur chargement hub nRF24L01: %s" % str(erreur_nrf24))
+                # traceback.print_exc()
 
         if self._args.am2302:
             try:
                 self.inclure_am2302()
             except Exception as erreur_nrf24:
-                print("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
-                traceback.print_exc()
+                logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
+                # traceback.print_exc()
 
     def fermer(self):
         super().fermer()
@@ -122,22 +122,22 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             try:
                 self._rf24_server.fermer()
             except Exception as enrf:
-                print("erreur fermeture NRF24L01: %s" % str(enrf))
+                logger.info("erreur fermeture NRF24L01: %s" % str(enrf))
 
         if self._affichage_lcd is not None:
             try:
                 self._affichage_lcd.fermer()
             except Exception as elcd:
-                print("erreur fermeture LCD: %s" % str(elcd))
+                logger.info("erreur fermeture LCD: %s" % str(elcd))
 
         if self._am2302 is not None:
             try:
                 self._am2302.fermer()
             except Exception as eam:
-                print("erreur fermeture AM2302: %s" % str(eam))
+                logger.info("erreur fermeture AM2302: %s" % str(eam))
 
     def inclure_lcd(self):
-        print("Activer LCD")
+        logger.info("Activer LCD")
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
 
         if self._args.timezone is None:
@@ -154,7 +154,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):
-        print("Activer RF24 Mesh Master")
+        logger.info("Activer RF24 Mesh Master")
         from mgraspberry.raspberrypi.RF24Server import NRF24Server
         self._rf24_server = NRF24Server(self.__idmg, self.__environnement)
         self._rf24_server.start(self.transmettre_lecture_callback)
@@ -162,7 +162,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def inclure_am2302(self):
         pin = self._args.am2302
-        print("Activer AS2302 sur pin %d" % pin)
+        logger.info("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
         self._am2302 = ThermometreAdafruitGPIO(self.__uuid, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)

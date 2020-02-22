@@ -7,5 +7,5 @@ PYTHONPATH=$GITPATH/millegrilles.consignation.python:$GITPATH/millegrilles.raspb
 
 export PYTHONPATH
 
-python3 ./mgraspberrypi.py --int --debug --rf24master $1
+python3 ../bin/mgraspberrypi.py --int --debug --rf24master $1
 
