@@ -2,4 +2,4 @@ pika==0.12
 pymongo
 bson
 Adafruit_DHT
-pynacl
+donna25519
