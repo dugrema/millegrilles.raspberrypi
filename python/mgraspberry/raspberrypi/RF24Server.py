@@ -13,8 +13,9 @@ import struct
 
 import logging
 
-from mgraspberry.raspberrypi.ProtocoleVersion8 import AssembleurPaquets, Paquet0, PaquetDemandeDHCP, \
-    PaquetBeaconDHCP, PaquetReponseDHCP, TYPE_REQUETE_DHCP, TYPE_PAQUET0
+from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
+    AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, \
+    TypesMessages
 
 MG_CHANNEL_PROD = 0x5e
 MG_CHANNEL_INT = 0x24
@@ -196,15 +197,15 @@ class NRF24Server:
 
     def process_paquet_payload(self, payload):
         version = payload[0]
-        if version == 8:
+        if version == VERSION_PROTOCOLE:
             from_node_id = payload[1]
             type_paquet = struct.unpack('H', payload[2:4])[0]
-            self.__logger.debug("Type paquet: %d" % type_paquet) 
+            self.__logger.error("Type paquet: %d" % type_paquet) 
 
-            if type_paquet == TYPE_PAQUET0:
+            if type_paquet == TypesMessages.TYPE_PAQUET0:
                 # Paquet0
                 self.process_paquet0(from_node_id, payload)
-            elif type_paquet == TYPE_REQUETE_DHCP:
+            elif type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
                 self.process_dhcp_request(payload)
             else:
                 assembleur = self.__assembleur_par_nodeId.get(from_node_id)
@@ -216,7 +217,13 @@ class NRF24Server:
                         # self.__logger.debug("Message complet: \n%s" % message_json)
 
                         # Transmettre message recu a MQ
-                        self._callback_soumettre(message)
+                        if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
+                            self._callback_soumettre(message)
+                        elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
+                            self.__logger.error("Nouvelle cle : %s" % message)
+                            self.__ajouter_cle_appareil(message)
+                        else:
+                            self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
 
                         del self.__assembleur_par_nodeId[from_node_id]
                 else:
@@ -257,6 +264,11 @@ class NRF24Server:
         adresse_paddee = adresse + bytes(8-len(adresse))
         adresse_no = struct.unpack('Q', adresse_paddee)[0]
         return adresse_no
+        
+    def __ajouter_cle_appareil(self, message):
+        self.__logger.error("Mesages : %s"  % str(message))
+        cle_str= binascii.hexlify(message['senseurs'][0]['cle_publique_debut'] + message['senseurs'][1]['cle_publique_fin'])
+        self.__logger.error("Cle: %s" % cle_str)
 
 
 class ReserveDHCP:
