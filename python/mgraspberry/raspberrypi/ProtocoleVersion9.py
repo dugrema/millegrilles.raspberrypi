@@ -430,7 +430,13 @@ class PaquetTransmission:
         self.type_message = type_message
 
     def encoder(self):
-        return None
+        """
+        Genere le message en bytes. Override dans sous-classe pour 
+        ajouter le contenu apres le prefixe.
+        """
+        prefixe = pack('=BHB', VERSION_PROTOCOLE, self.type_message, self.node_id)
+        
+        return prefixe
 
 
 class PaquetBeaconDHCP(PaquetTransmission):
@@ -458,9 +464,36 @@ class PaquetReponseDHCP(PaquetTransmission):
         self.node_uuid = node_uuid
 
     def encoder(self):
-        adresse_node = pack('=B', self.node_id) + self.__reseau
-        message = pack('=BH', VERSION_PROTOCOLE, TypesMessages.TYPE_REPONSE_DHCP)
-        message = message + adresse_node
-        # message = message + self.node_uuid
+        prefixe = super().encoder()
+        message = prefixe + self.__reseau
         message = message + bytes(32-len(message))  # Padding a 32
+        return message
+
+
+class PaquetReponseCleServeur1(PaquetTransmission):
+
+    def __init__(self, node_id, clePubliqueServeur):
+        super().__init__(TypesMessages.MSG_TYPE_CLE_SERVEUR_1)
+        self.__clePubliqueServeur = clePubliqueServeur[0:28]
+        self.node_id = node_id
+
+    def encoder(self):
+        prefixe = super().encoder()
+        message = prefixe + self.__clePubliqueServeur
+        
+        return message
+
+
+class PaquetReponseCleServeur2(PaquetTransmission):
+
+    def __init__(self, node_id, clePubliqueServeur):
+        super().__init__(TypesMessages.MSG_TYPE_CLE_SERVEUR_2)
+        self.__clePubliqueServeur = clePubliqueServeur[28:32]
+        self.node_id = node_id
+
+    def encoder(self):
+        prefixe = super().encoder()
+        message = prefixe + self.__clePubliqueServeur
+        message = message + bytes(32-len(message))  # Padding a 32
+
         return message

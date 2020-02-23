@@ -1,5 +1,6 @@
 import RF24
 import RPi.GPIO as GPIO
+import donna25519
 
 GPIO.setmode(GPIO.BCM)
 
@@ -13,9 +14,10 @@ import struct
 
 import logging
 
+from mgraspberry.raspberrypi import ProtocoleVersion9
 from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
     AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, \
-    TypesMessages
+    TypesMessages, PaquetReponseCleServeur1, PaquetReponseCleServeur2
 
 MG_CHANNEL_PROD = 0x5e
 MG_CHANNEL_INT = 0x24
@@ -23,6 +25,7 @@ MG_CHANNEL_DEV = 0x0c
 
 ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
+TRANSMISSION_NB_ESSAIS = 5
 
 class NRF24Server:
 
@@ -48,6 +51,7 @@ class NRF24Server:
             self.__channel = MG_CHANNEL_INT
         else:
             self.__channel = MG_CHANNEL_DEV
+            self.__logger.setLevel(logging.DEBUG)
 
         self.irq_gpio_pin = None
         self.__radio = None
@@ -200,7 +204,7 @@ class NRF24Server:
         if version == VERSION_PROTOCOLE:
             from_node_id = payload[1]
             type_paquet = struct.unpack('H', payload[2:4])[0]
-            self.__logger.error("Type paquet: %d" % type_paquet) 
+            self.__logger.debug("Type paquet: %d" % type_paquet) 
 
             if type_paquet == TypesMessages.TYPE_PAQUET0:
                 # Paquet0
@@ -220,8 +224,8 @@ class NRF24Server:
                         if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
                             self._callback_soumettre(message)
                         elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
-                            self.__logger.error("Nouvelle cle : %s" % message)
-                            self.__ajouter_cle_appareil(message)
+                            self.__logger.debug("Nouvelle cle : %s" % message)
+                            self.__ajouter_cle_appareil(from_node_id, message)
                         else:
                             self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
 
@@ -232,24 +236,62 @@ class NRF24Server:
             self.__logger.warning("Message version non supportee : %d" % version)
 
     def transmettre_response_dhcp(self, node_id_assigne, node_uuid):
-
+        """
+        Repond a une demande DHCP d'un appareil.
+        """
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
-        message = paquet.encoder()
-        self.__logger.debug("Transmission paquet DHCP reponse nodeId:%d\n%s" % (node_id_assigne, binascii.hexlify(message).decode('utf8')))
-        for essai in range(0, 4):
-            reponse = self.__radio.write(message)
-            if not reponse:
-                self.__logger.debug("Erreur transmission reponse %s" % str(reponse))
-            else:
-                break
+        self.__logger.error("Transmettre reponse DHCP vers: %s" % str(node_uuid))
+        self.transmettre_paquets([paquet])
 
     def transmettre_beacon(self):
-        # self.__logger.info("Transmission beacon %s" % binascii.hexlify(self.__message_beacon).decode('utf8'))
-        self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
-        self.__radio.stopListening()
-        # for i in range(0, 3):
-        self.__radio.write(self.__message_beacon, True)
-        self.__radio.startListening()
+        try:
+            self.__radio.openWritingPipe(ADDR_BROADCAST_DHCP)
+            self.__radio.stopListening()
+            self.__radio.write(self.__message_beacon, True)
+        finally:
+            self.__radio.startListening()
+
+    def transmettre_paquets(self, paquets: list, node_id = None):
+        """
+        Transmet une sequence de paquets relies. Si un paquet echoue,
+        le reste des paquets ne seront pas transmis.
+        """
+        reponse = False
+        if node_id is None:
+            adresse = ADDR_BROADCAST_DHCP
+        else:
+            # Le premier byte de l'adresse est le node_id
+            adresse = bytes([node_id]) + self.__adresse_reseau
+                        
+        try:
+            self.__radio.openWritingPipe(adresse)
+            self.__radio.stopListening()
+
+            reponse = True
+            for paquet in paquets:
+                if not reponse:
+                    self.__logger.error("Erreur transmission vers : %s" % binascii.hexlify(adresse))
+                    break
+                
+                message = paquet.encoder()
+                self.__logger.debug("Transmission paquet nodeId:%d\n%s" % (
+                    paquet.node_id, binascii.hexlify(message).decode('utf8')))
+
+                for essai in range(0, TRANSMISSION_NB_ESSAIS):
+                    reponse = self.__radio.write(message)
+                    if reponse:
+                        # Transmission reussie
+                        break
+                        
+        except Exception:
+            self.__logger.exception("Erreur tranmission message vers %s" % str(adresse))
+            reponse = False
+        finally:
+            # S'assurer de redemarrer l'ecoute de la radio
+            self.__radio.startListening()
+        
+        return reponse
+        
 
     # Close all connections and the radio
     def fermer(self):
@@ -265,10 +307,29 @@ class NRF24Server:
         adresse_no = struct.unpack('Q', adresse_paddee)[0]
         return adresse_no
         
-    def __ajouter_cle_appareil(self, message):
-        self.__logger.error("Mesages : %s"  % str(message))
-        cle_str= binascii.hexlify(message['senseurs'][0]['cle_publique_debut'] + message['senseurs'][1]['cle_publique_fin'])
-        self.__logger.error("Cle: %s" % cle_str)
+    def __ajouter_cle_appareil(self, node_id, message):
+        self.__logger.debug("Messages : %s"  % str(message))
+        uuid_senseur = message['uuid_senseur']
+        cle = bytes(message['senseurs'][0]['cle_publique_debut'] + message['senseurs'][1]['cle_publique_fin'])
+        self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
+        
+        # Generer nouvelle cle ed25519 pour identifier cle partagee
+        appareil_side = donna25519.PublicKey(cle)
+        serveur_side = donna25519.PrivateKey()
+        shared_key = serveur_side.do_exchange(appareil_side)
+        self.__logger.debug("Cle shared %s : %s" % (uuid_senseur, binascii.hexlify(shared_key)))
+        
+        # Transmettre serveur side public
+        serveur_side_public = bytes(serveur_side.get_public().public)
+        self.__logger.debug("Cle publique serveur : %s" % binascii.hexlify(serveur_side_public))
+        # self.__logger.debug("Cle privee serveur : %s" % binascii.hexlify(bytes(serveur_side)))
+        
+        paquets = [
+            ProtocoleVersion9.PaquetReponseCleServeur1(node_id, serveur_side_public),
+            ProtocoleVersion9.PaquetReponseCleServeur2(node_id, serveur_side_public),
+        ]
+        self.__logger.debug("Transmission paquet cle publique vers reponse nodeId:%d" % node_id)
+        self.transmettre_paquets(paquets, node_id)
 
 
 class ReserveDHCP:
