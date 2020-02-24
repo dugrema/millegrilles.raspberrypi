@@ -3,3 +3,4 @@ pymongo
 bson
 Adafruit_DHT
 donna25519
+pycryptodome
