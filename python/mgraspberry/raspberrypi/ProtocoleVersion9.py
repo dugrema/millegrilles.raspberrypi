@@ -30,6 +30,7 @@ class TypesMessages:
     MSG_TYPE_LECTURE_TP         = 0x103
     MSG_TYPE_LECTURE_POWER      = 0x104
     MSG_TYPE_LECTURE_ONEWIRE    = 0x105
+    MSG_TYPE_LECTURE_ANTENNE    = 0x106
 
 
 class Paquet:
@@ -357,6 +358,37 @@ class PaquetOneWireTemperature(PaquetOneWire):
         )
 
 
+class PaquetAntenne(PaquetPayload):
+
+    def __init__(self, data: bytes):
+        self.pct_signal = None
+        self.force_emetteur = None
+        self.canal = None
+        super().__init__(data)
+
+    def _parse(self):
+        super()._parse()
+        values = unpack('BBB', self.data[6:9])
+        self.pct_signal = values[0]
+        self.force_emetteur = values[1]
+        self.canal = values[2]
+
+    def assembler(self):
+        return {
+            'type': 'antenne',
+            'pctSignal': self.pct_signal,
+            'forceEmetteur': self.force_emetteur,
+            'canal': self.canal,
+        }
+
+    def __str__(self):
+        return 'Antenne  pctSignal {}%, forceEmetteur {}, canal {}'.format(
+            self.pct_signal,
+            self.force_emetteur,
+            hex(self.canal),
+        )
+
+
 class AssembleurPaquets:
 
     def __init__(self, paquet0: Paquet0, info_appareil = None):
@@ -481,6 +513,8 @@ class AssembleurPaquets:
             paquet = PaquetPower(data)
         elif type_message == TypesMessages.MSG_TYPE_LECTURE_ONEWIRE:
             paquet = PaquetOneWireTemperature(data)
+        elif type_message == TypesMessages.MSG_TYPE_LECTURE_ANTENNE:
+            paquet = PaquetAntenne(data)
 
         return paquet
 
