@@ -532,8 +532,7 @@ class PaquetACKTransmission(PaquetTransmission):
         self.commande = commande
 
     def encoder(self):
-        prefixe = super().encoder()
-        message = prefixe + bytes([self.node_id])
+        message = super().encoder()
         if self.tag is not None:
             message = message + self.tag
         if self.commande is not None:
