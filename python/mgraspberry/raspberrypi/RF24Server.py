@@ -44,16 +44,20 @@ class NRF24Server:
         self.reception_par_nodeId = dict()
         self.__assembleur_par_nodeId = dict()
 
+        self.__radio_PA_level = RF24.RF24_PA_HIGH
+
         # Conserver le canal de communication
         if type_env == 'prod':
             self.__channel = MG_CHANNEL_PROD
         elif type_env == 'int':
             self.__channel = MG_CHANNEL_INT
             self.__logger.setLevel(logging.DEBUG)
+            self.__radio_PA_level = RF24.RF24_PA_LOW
             logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
         else:
             self.__channel = MG_CHANNEL_DEV
             self.__logger.setLevel(logging.DEBUG)
+            self.__radio_PA_level = RF24.RF24_PA_LOW
             logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
 
         self.irq_gpio_pin = None
@@ -119,7 +123,7 @@ class NRF24Server:
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         # self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
-        self.__radio.setPALevel(RF24.RF24_PA_LOW)  # Power Amplifier
+        self.__radio.setPALevel(self.__radio_PA_level)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
         self.__radio.setRetries(15, 1)
         self.__radio.setAutoAck(1)
@@ -224,12 +228,13 @@ class NRF24Server:
                     complet = assembleur.recevoir(payload)
                     if complet:
                         try:
-                            message = assembleur.assembler()
+                            message, paquet_ack = assembleur.assembler()
                             # message_json = json.dumps(message, indent=2)
                             # self.__logger.debug("Message complet: \n%s" % message_json)
 
                             # Transmettre message recu a MQ
                             if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
+                                self.transmettre_ack(paquet_ack)
                                 self._callback_soumettre(message)
                             elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
                                 self.__logger.debug("Nouvelle cle : %s" % message)
@@ -245,12 +250,16 @@ class NRF24Server:
         else:
             self.__logger.warning("Message version non supportee : %d" % version)
 
+    def transmettre_ack(self, paquet_ack):
+        self.__logger.debug("Transmettre ACK vers Id: %s" % str(paquet_ack.node_id))
+        self.transmettre_paquets([paquet_ack], paquet_ack.node_id)
+
     def transmettre_response_dhcp(self, node_id_assigne, node_uuid):
         """
         Repond a une demande DHCP d'un appareil.
         """
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
-        self.__logger.error("Transmettre reponse DHCP vers: %s" % str(node_uuid))
+        self.__logger.debug("Transmettre reponse DHCP vers: %s" % str(node_uuid))
         self.transmettre_paquets([paquet])
 
     def transmettre_beacon(self):

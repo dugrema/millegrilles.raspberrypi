@@ -16,12 +16,14 @@ class TypesMessages:
     TYPE_REQUETE_DHCP = 0x1
     TYPE_REPONSE_DHCP = 0x2
     TYPE_BEACON_DHCP  = 0x3
+    MSG_TYPE_REPONSE_ACK  = 0x9
 
     MSG_TYPE_CLE_APPAREIL_1 = 0x4
     MSG_TYPE_CLE_APPAREIL_2 = 0x5
     MSG_TYPE_CLE_SERVEUR_1  = 0x6
     MSG_TYPE_CLE_SERVEUR_2  = 0x7
     MSG_TYPE_NOUVELLE_CLE   = 0x8
+    MSG_TYPE_REPONSE_ACK    = 0x9
         
     MSG_TYPE_LECTURES_COMBINEES = 0x101
     MSG_TYPE_LECTURE_TH         = 0x102
@@ -429,7 +431,9 @@ class AssembleurPaquets:
             'mesh_address': self.__paquet0.from_node,
         }
 
-        return dict_message
+        paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
+
+        return dict_message, paquet_ack
         
     @property
     def doit_decrypter(self):
@@ -508,6 +512,32 @@ class PaquetBeaconDHCP(PaquetTransmission):
 
     def encoder(self):
         message = pack('=BH', VERSION_PROTOCOLE, TypesMessages.TYPE_BEACON_DHCP) + self.adresse_serveur  # Ajouter idmg plus tard
+        message = message + bytes(32-len(message))  # Padding a 32
+        return message
+
+
+class PaquetACKTransmission(PaquetTransmission):
+    """
+    Paquet utilise pour confirmer la reception correcte (ou non)
+    d'une transmission.
+    :param node_id: Id du noeud
+    :param tag: Compute tag (hash) recu, permet de confirmer le message de maniere unique
+    :param commande: Commande transmise en piggy-back.
+    """
+
+    def __init__(self, node_id: int, tag: bytes, commande: bytes = None):
+        super().__init__(TypesMessages.MSG_TYPE_REPONSE_ACK)
+        self.node_id = node_id
+        self.tag = tag
+        self.commande = commande
+
+    def encoder(self):
+        prefixe = super().encoder()
+        message = prefixe + bytes([self.node_id])
+        if self.tag is not None:
+            message = message + self.tag
+        if self.commande is not None:
+            message = message + self.commande
         message = message + bytes(32-len(message))  # Padding a 32
         return message
 
