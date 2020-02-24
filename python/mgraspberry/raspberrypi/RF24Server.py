@@ -65,6 +65,7 @@ class NRF24Server:
 
         self.__path_configuration = '/opt/millegrilles/etc/%s' % idmg
         self.__reserve_dhcp = ReserveDHCP(path.join(self.__path_configuration, 'rf24dhcp.json'))
+        self.__information_appareils_par_uuid = dict()
 
         self.__adresse_serveur = None
         self.__adresse_reseau = None
@@ -197,10 +198,10 @@ class NRF24Server:
 
     def process_paquet0(self, node_id, payload):
         paquet0 = Paquet0(payload)
-        message = AssembleurPaquets(paquet0)
+        uuid_senseur = binascii.hexlify(paquet0.uuid).decode('utf-8')
+        info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
+        message = AssembleurPaquets(paquet0, info_appareil)
         self.__assembleur_par_nodeId[node_id] = message
-        # self.__logger.debug("Paquet0 from node ID: %s, %s" % (str(node_id), str(paquet0)))
-        # self.__logger.debug("Paquet0 bin: %s" % binascii.hexlify(payload))
 
     def process_paquet_payload(self, payload):
         
@@ -222,18 +223,21 @@ class NRF24Server:
                 if assembleur is not None:
                     complet = assembleur.recevoir(payload)
                     if complet:
-                        message = assembleur.assembler()
-                        # message_json = json.dumps(message, indent=2)
-                        # self.__logger.debug("Message complet: \n%s" % message_json)
+                        try:
+                            message = assembleur.assembler()
+                            # message_json = json.dumps(message, indent=2)
+                            # self.__logger.debug("Message complet: \n%s" % message_json)
 
-                        # Transmettre message recu a MQ
-                        if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
-                            self._callback_soumettre(message)
-                        elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
-                            self.__logger.debug("Nouvelle cle : %s" % message)
-                            self.__ajouter_cle_appareil(from_node_id, message)
-                        else:
-                            self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
+                            # Transmettre message recu a MQ
+                            if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
+                                self._callback_soumettre(message)
+                            elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
+                                self.__logger.debug("Nouvelle cle : %s" % message)
+                                self.__ajouter_cle_appareil(from_node_id, message)
+                            else:
+                                self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
+                        except ValueError:
+                            self.__logger.error("Message rejete, tag invalide")
 
                         del self.__assembleur_par_nodeId[from_node_id]
                 else:
@@ -336,6 +340,12 @@ class NRF24Server:
         ]
         self.__logger.debug("Transmission paquet cle publique vers reponse nodeId:%d" % node_id)
         self.transmettre_paquets(paquets, node_id)
+        
+        info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
+        if info_appareil is None:
+            info_appareil = dict()
+            self.__information_appareils_par_uuid[uuid_senseur] = info_appareil
+        info_appareil['cle_partagee'] = shared_key
 
 
 class ReserveDHCP:

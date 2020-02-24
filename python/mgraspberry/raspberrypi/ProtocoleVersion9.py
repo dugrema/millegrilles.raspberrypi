@@ -1,4 +1,6 @@
 from struct import pack, unpack
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 
 import binascii
 import datetime
@@ -355,14 +357,18 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
 class AssembleurPaquets:
 
-    def __init__(self, paquet0: Paquet0):
+    def __init__(self, paquet0: Paquet0, info_appareil = None):
         self.__paquet0 = paquet0
+        self.__info_appareil = info_appareil
         self.__timestamp_debut = datetime.datetime.now()
         self.__tag = None
+        self.__tag_calcule = None
         self.__iv = None
 
         self.__paquets = dict()
         self.__paquets[0] = paquet0
+        
+        self.__cipher = None
         
         self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
@@ -379,6 +385,19 @@ class AssembleurPaquets:
 
             if isinstance(paquet, PaquetIv):
                 self.__iv = paquet.iv
+                
+                if self.__info_appareil is not None:
+                    cle_partagee = self.__info_appareil.get('cle_partagee')
+                    if cle_partagee is not None:
+                        # Activer cipher
+                        self.__cipher = AES.new(cle_partagee, AES.MODE_EAX, nonce=self.__iv)
+                    
+                        # Ajouter donnees auth (paquet 0, 22 bytes)
+                        self.__cipher.update(self.__paquets[0].data[0:22])
+                    else:
+                        self.__logger.warning("Cle partagee non disponible")
+                else:
+                    self.__logger.warning("Cle partage non disponible - aucune info appareil")
 
             if isinstance(paquet, PaquetFin):
                 self.__tag = paquet.tag
@@ -390,9 +409,18 @@ class AssembleurPaquets:
         return False
 
     def assembler(self):
+        """
+        :throws ValueError: Si tag ne correspond pas
+        """
         liste_ordonnee = list()
         for idx in range(1, len(self.__paquets)):
             liste_ordonnee.append(self.__paquets[idx])
+            
+        if self.__cipher is not None:
+            # Verifier le tag (hash)
+            self.__cipher.verify(self.__tag)
+            # except ValueError:
+            #     self.__logger.error("Tags (hash) ne correspondent pas")
 
         dict_message = {
             'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
@@ -421,8 +449,15 @@ class AssembleurPaquets:
         elif self.doit_decrypter:
             # Decrypter data avant le mapping
             # S'assurer de decrypter en ordre et une seule fois
-            if self.__paquets.get(no_paquet-1) is not None and self.__paquets.get(no_paquet) is None:
-                self.__logger.debug("Contenu crypte recu : %s" % binascii.hexlify(data[6:]))
+            if self.__cipher is not None:
+                if self.__paquets.get(no_paquet-1) is not None and self.__paquets.get(no_paquet) is None:
+                    self.__logger.debug("Contenu crypte recu : %s" % binascii.hexlify(data[6:]))
+                    # Les 4 premiers bytes ne sont pas cryptes
+                    data = data[0:4] + self.__cipher.decrypt(data[4:])
+                    type_message = unpack('H', data[4:6])[0]
+                    self.__logger.debug("Decrypte noPaquet : %d, type paquet : %d" % (no_paquet, type_message))
+            else:
+                self.__logger.warning("Cipher non disponible pour donnees cryptees")
 
         if type_message == TypesMessages.TYPE_PAQUET_FIN:
             paquet = PaquetFin(data)
