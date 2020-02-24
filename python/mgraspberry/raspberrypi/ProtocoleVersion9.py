@@ -2,6 +2,7 @@ from struct import pack, unpack
 
 import binascii
 import datetime
+import logging
 
 VERSION_PROTOCOLE = 9
 
@@ -42,7 +43,7 @@ class Paquet:
 
     def _parse(self):
         self.version = self.data[0]
-        self.type_message = self.data[2:4]
+        self.type_message = self.data[4:6]
 
     def assembler(self):
         raise NotImplementedError()
@@ -65,8 +66,8 @@ class Paquet0(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.type_transmission = unpack('H', self.data[4:6])[0]
-        self.uuid = self.data[6:22]
+        self.type_transmission = unpack('H', self.data[6:8])[0]
+        self.uuid = self.data[8:24]
 
     def __str__(self):
         return 'Paquet0 UUID: %s, type: %s' % (
@@ -87,7 +88,7 @@ class PaquetDemandeDHCP(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.uuid = bytes(self.data[3:19])
+        self.uuid = bytes(self.data[6:22])
 
     def assembler(self):
         return dict()
@@ -101,7 +102,7 @@ class PaquetPayload(Paquet):
 
     def _parse(self):
         super()._parse()
-        self.__no_paquet = unpack('H', self.data[4:6])[0]
+        self.__no_paquet = unpack('H', self.data[2:4])[0]
 
     @property
     def no_paquet(self):
@@ -119,9 +120,9 @@ class PaquetIv(PaquetPayload):
         self.iv = self.data[6:22]
 
     def __str__(self):
-        return 'Paquet Fin tag: %s, nb paquets: %s' % (
+        return 'Paquet IV : %s, no paquet: %d' % (
             binascii.hexlify(self.iv).decode('utf-8'),
-            binascii.hexlify(self.type_message).decode('utf-8')
+            self.no_paquet
         )
         
     def assembler(self):
@@ -132,22 +133,25 @@ class PaquetFin(PaquetPayload):
 
     def __init__(self, data: bytes):
         self.tag = None
+        self.nb_paquets = None
         super().__init__(data)
+
+    @property
+    def no_paquet(self):
+        return self.nb_paquets
 
     def _parse(self):
         super()._parse()
-        self.tag = self.data[6:22]
+        self.nb_paquets = unpack('H', self.data[6:8])[0]
+        self.tag = self.data[8:24]
 
     def __str__(self):
-        return 'Paquet Fin tag: %s, nb paquets: %s' % (
-            binascii.hexlify(self.tag).decode('utf-8'),
-            binascii.hexlify(self.type_message).decode('utf-8')
+        # binascii.hexlify(self.tag).decode('utf-8'),
+        return 'Paquet Fin tag: %s, nb paquets: %d' % (
+            binascii.hexlify(self.tag),
+            self.nb_paquets
         )
         
-    @property
-    def nb_paquets(self):
-        return self.no_paquet + 1
-
     def assembler(self):
         return dict()
         
@@ -359,6 +363,8 @@ class AssembleurPaquets:
 
         self.__paquets = dict()
         self.__paquets[0] = paquet0
+        
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
     def recevoir(self, data: bytes):
         """
@@ -366,16 +372,20 @@ class AssembleurPaquets:
         :param data:
         :return: True si tous les paquets ont ete recus
         """
-        paquet = AssembleurPaquets.map(data)
-        print("Paquet: %s" % str(paquet))
-        self.__paquets[paquet.no_paquet] = paquet
+        paquet = self.map(data)
+        if paquet is not None:
+            self.__logger.debug("Paquet: %s" % str(paquet))
+            self.__paquets[paquet.no_paquet] = paquet
 
-        if isinstance(paquet, PaquetIv):
-            self.__iv = paquet.iv
+            if isinstance(paquet, PaquetIv):
+                self.__iv = paquet.iv
 
-        if isinstance(paquet, PaquetFin):
-            self.__tag = paquet.tag
-            return True
+            if isinstance(paquet, PaquetFin):
+                self.__tag = paquet.tag
+                return True
+
+        else:
+            self.__logger.error("Paquet non decodable")
 
         return False
 
@@ -394,14 +404,26 @@ class AssembleurPaquets:
         return dict_message
         
     @property
+    def doit_decrypter(self):
+        return self.__iv is not None
+        
+    @property
     def type_transmission(self):
         return self.__paquet0.type_transmission
 
-    @staticmethod
-    def map(data: bytes):
-        type_message = unpack('H', data[2:4])[0]
-
+    def map(self, data: bytes):
+        no_paquet, type_message = unpack('HH', data[2:6])
+        self.__logger.debug("Mapping noPaquet : %d, type paquet : %d" % (no_paquet, type_message))
+        
         paquet = None
+        if no_paquet == TypesMessages.TYPE_PAQUET_FIN:
+            paquet = PaquetFin(data)
+        elif self.doit_decrypter:
+            # Decrypter data avant le mapping
+            # S'assurer de decrypter en ordre et une seule fois
+            if self.__paquets.get(no_paquet-1) is not None and self.__paquets.get(no_paquet) is None:
+                self.__logger.debug("Contenu crypte recu : %s" % binascii.hexlify(data[6:]))
+
         if type_message == TypesMessages.TYPE_PAQUET_FIN:
             paquet = PaquetFin(data)
         elif type_message == TypesMessages.TYPE_PAQUET_IV:
@@ -430,7 +452,13 @@ class PaquetTransmission:
         self.type_message = type_message
 
     def encoder(self):
-        return None
+        """
+        Genere le message en bytes. Override dans sous-classe pour 
+        ajouter le contenu apres le prefixe.
+        """
+        prefixe = pack('=BHB', VERSION_PROTOCOLE, self.type_message, self.node_id)
+        
+        return prefixe
 
 
 class PaquetBeaconDHCP(PaquetTransmission):
@@ -458,9 +486,36 @@ class PaquetReponseDHCP(PaquetTransmission):
         self.node_uuid = node_uuid
 
     def encoder(self):
-        adresse_node = pack('=B', self.node_id) + self.__reseau
-        message = pack('=BH', VERSION_PROTOCOLE, TypesMessages.TYPE_REPONSE_DHCP)
-        message = message + adresse_node
-        # message = message + self.node_uuid
+        prefixe = super().encoder()
+        message = prefixe + self.__reseau
         message = message + bytes(32-len(message))  # Padding a 32
+        return message
+
+
+class PaquetReponseCleServeur1(PaquetTransmission):
+
+    def __init__(self, node_id, clePubliqueServeur):
+        super().__init__(TypesMessages.MSG_TYPE_CLE_SERVEUR_1)
+        self.__clePubliqueServeur = clePubliqueServeur[0:28]
+        self.node_id = node_id
+
+    def encoder(self):
+        prefixe = super().encoder()
+        message = prefixe + self.__clePubliqueServeur
+        
+        return message
+
+
+class PaquetReponseCleServeur2(PaquetTransmission):
+
+    def __init__(self, node_id, clePubliqueServeur):
+        super().__init__(TypesMessages.MSG_TYPE_CLE_SERVEUR_2)
+        self.__clePubliqueServeur = clePubliqueServeur[28:32]
+        self.node_id = node_id
+
+    def encoder(self):
+        prefixe = super().encoder()
+        message = prefixe + self.__clePubliqueServeur
+        message = message + bytes(32-len(message))  # Padding a 32
+
         return message
