@@ -49,9 +49,12 @@ class NRF24Server:
             self.__channel = MG_CHANNEL_PROD
         elif type_env == 'int':
             self.__channel = MG_CHANNEL_INT
+            self.__logger.setLevel(logging.DEBUG)
+            logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
         else:
             self.__channel = MG_CHANNEL_DEV
             self.__logger.setLevel(logging.DEBUG)
+            logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
 
         self.irq_gpio_pin = None
         self.__radio = None
@@ -200,17 +203,20 @@ class NRF24Server:
         # self.__logger.debug("Paquet0 bin: %s" % binascii.hexlify(payload))
 
     def process_paquet_payload(self, payload):
-        version = payload[0]
+        
+        # Extraire premier bytes pour routing / traitement
+        # Noter que pour les paquets cryptes, type_paquet n'est pas utilisable
+        version, from_node_id, no_paquet, type_paquet = struct.unpack('BBHH', payload[0:6])
+        
         if version == VERSION_PROTOCOLE:
-            from_node_id = payload[1]
-            type_paquet = struct.unpack('H', payload[2:4])[0]
             self.__logger.debug("Type paquet: %d" % type_paquet) 
 
-            if type_paquet == TypesMessages.TYPE_PAQUET0:
-                # Paquet0
-                self.process_paquet0(from_node_id, payload)
-            elif type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
-                self.process_dhcp_request(payload)
+            if no_paquet == 0:
+                if type_paquet == TypesMessages.TYPE_PAQUET0:
+                    # Paquet0
+                    self.process_paquet0(from_node_id, payload)
+                elif type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
+                    self.process_dhcp_request(payload)
             else:
                 assembleur = self.__assembleur_par_nodeId.get(from_node_id)
                 if assembleur is not None:
