@@ -3,7 +3,6 @@ import traceback
 import logging
 import binascii
 import json
-import os
 
 from uuid import uuid1
 
@@ -18,8 +17,8 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             self,
             pidfile='/run/mg-noeud.pid',
             stdin='/dev/null',
-            stdout='/var/log/millegrilles/noeud.log',
-            stderr='/var/log/millegrilles/noeud.err'
+            stdout='/var/log/millegrilles/noeud.out',
+            stderr='/var/log/millegrilles/noeud.log'
     ):
         # Call superclass init
         super().__init__(pidfile, stdin, stdout, stderr)
@@ -159,7 +158,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):
-        logger.info("Activer RF24 Mesh Master")
+        logger.info("Activer RF24 Server")
         from mgraspberry.raspberrypi.RF24Server import NRF24Server
         self._rf24_server = NRF24Server(self.__idmg, self.__environnement)
         self._rf24_server.start(self.transmettre_lecture_callback)
