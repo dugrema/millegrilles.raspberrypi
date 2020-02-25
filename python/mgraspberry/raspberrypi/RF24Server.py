@@ -1,8 +1,7 @@
+from __future__ import print_function
 import RF24
 import RPi.GPIO as GPIO
 import donna25519
-
-GPIO.setmode(GPIO.BCM)
 
 from threading import Thread, Event
 from os import path, urandom
@@ -18,6 +17,9 @@ from mgraspberry.raspberrypi import ProtocoleVersion9
 from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
     AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, \
     TypesMessages, PaquetReponseCleServeur1, PaquetReponseCleServeur2
+
+
+GPIO.setmode(GPIO.BCM)
 
 MG_CHANNEL_PROD = 0x5e
 MG_CHANNEL_INT = 0x24
@@ -44,7 +46,7 @@ class NRF24Server:
         self.reception_par_nodeId = dict()
         self.__assembleur_par_nodeId = dict()
 
-        self.__radio_PA_level = RF24.RF24_PA_HIGH
+        self.__radio_PA_level = RF24.RF24_PA_LOW
 
         # Conserver le canal de communication
         if type_env == 'prod':
@@ -76,7 +78,7 @@ class NRF24Server:
         self.__adresse_serveur = None
         self.__adresse_reseau = None
         self.__message_beacon = None
-        self.__intervalle_beacon = datetime.timedelta(seconds=2)
+        self.__intervalle_beacon = datetime.timedelta(seconds=0.5)
         self.__prochain_beacon = datetime.datetime.utcnow()
 
         self.initialiser_configuration()
@@ -139,7 +141,10 @@ class NRF24Server:
         self.__radio.openReadingPipe(1, addresseServeur)
         self.__logger.info("Address reading pipe 1: %s" % hex(addresseServeur))
 
-        self.__radio.printDetails()
+        print("Radio details")
+        print( self.__radio.printDetails() )
+        print("Fin radio details")
+        
         self.__logger.info("Radio ouverte")
 
         # Connecter IRQ pour reception paquets
@@ -192,7 +197,7 @@ class NRF24Server:
         self.__process_paquets()
 
         # Throttle le service
-        self.__event_reception.wait(2.0)
+        self.__event_reception.wait(0.5)
 
     def run(self):
         self.__logger.debug("Run Thread RF24Server")
