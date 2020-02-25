@@ -27,7 +27,7 @@ MG_CHANNEL_DEV = 0x0c
 
 ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
-TRANSMISSION_NB_ESSAIS = 1
+TRANSMISSION_NB_ESSAIS = 5
 
 class NRF24Server:
 
@@ -130,7 +130,7 @@ class NRF24Server:
         # self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         self.__radio.setPALevel(self.__radio_PA_level)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
-        self.__radio.setRetries(5, 15)
+        self.__radio.setRetries(8, 15)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
@@ -282,7 +282,7 @@ class NRF24Server:
         Repond a une demande DHCP d'un appareil.
         """
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
-        self.__logger.debug("Transmettre reponse DHCP vers: %s" % str(node_uuid))
+        self.__logger.debug("Transmettre reponse DHCP vers: %s" % hex(node_uuid))
         self.transmettre_paquets([paquet])
 
     def transmettre_beacon(self):
@@ -307,7 +307,6 @@ class NRF24Server:
                         
         try:
             self.__radio.openWritingPipe(adresse)
-            self.__radio.stopListening()
 
             reponse = True
             for paquet in paquets:
@@ -320,10 +319,13 @@ class NRF24Server:
                     paquet.node_id, binascii.hexlify(message).decode('utf8')))
 
                 for essai in range(0, TRANSMISSION_NB_ESSAIS):
+                    self.__radio.stopListening()
                     reponse = self.__radio.write(message)
                     if reponse:
                         # Transmission reussie
                         break
+                    self.__radio.startListening()
+                    self.__stop_event.wait(0.002)  # Wait 2ms
                         
         except Exception:
             self.__logger.exception("Erreur tranmission message vers %s" % str(adresse))
