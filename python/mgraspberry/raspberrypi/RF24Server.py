@@ -282,7 +282,7 @@ class NRF24Server:
         Repond a une demande DHCP d'un appareil.
         """
         paquet = PaquetReponseDHCP(self.__adresse_reseau, node_id_assigne, node_uuid)
-        self.__logger.debug("Transmettre reponse DHCP vers: %s" % hex(node_uuid))
+        self.__logger.debug("Transmettre reponse DHCP vers: %s" % binascii.hexlify(node_uuid).decode('utf-8'))
         self.transmettre_paquets([paquet])
 
     def transmettre_beacon(self):
