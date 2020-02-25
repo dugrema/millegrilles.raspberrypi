@@ -336,7 +336,7 @@ class NRF24Server:
         appareil_side = donna25519.PublicKey(cle)
         serveur_side = donna25519.PrivateKey()
         shared_key = serveur_side.do_exchange(appareil_side)
-        self.__logger.debug("Cle shared %s : %s" % (uuid_senseur, binascii.hexlify(shared_key)))
+        # self.__logger.debug("Cle shared %s : %s" % (uuid_senseur, binascii.hexlify(shared_key)))
         
         # Transmettre serveur side public
         serveur_side_public = bytes(serveur_side.get_public().public)
