@@ -94,8 +94,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             
         if self._args.debug:
             logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
-        elif self._args.info:
-            logging.getLogger('mgraspberry').setLevel(logging.INFO)
 
         # Charger modules specifiques au raspberrypi.
         if self._args.lcdsenseurs:
