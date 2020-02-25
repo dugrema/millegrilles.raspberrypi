@@ -25,7 +25,7 @@ MG_CHANNEL_DEV = 0x0c
 
 ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
-TRANSMISSION_NB_ESSAIS = 5
+TRANSMISSION_NB_ESSAIS = 1
 
 class NRF24Server:
 
@@ -62,6 +62,8 @@ class NRF24Server:
 
         self.irq_gpio_pin = None
         self.__radio = None
+        self.__fifo_payload = list()  # FIFO traitement messages
+        self.__event_reception = Event()
 
         self._callback_soumettre = None
         self.thread = None
@@ -115,17 +117,18 @@ class NRF24Server:
         self.__message_beacon = PaquetBeaconDHCP(self.__adresse_serveur).encoder()
 
     def open_radio(self):
-        self.__logger.info("Ouverture radio sur canal %d" % self.__channel)
+        self.__logger.info("Ouverture radio sur canal %s" % hex(self.__channel))
         self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
 
-        self.__radio.begin()
+        if not self.__radio.begin():
+            raise Exception("Erreur demarrage radio")
 
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         # self.__radio.setPALevel(RF24.RF24_PA_MAX)  # Power Amplifier
         self.__radio.setPALevel(self.__radio_PA_level)  # Power Amplifier
         # self.__radio.enableDynamicPayloads()
-        self.__radio.setRetries(15, 1)
+        self.__radio.setRetries(5, 15)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
@@ -154,27 +157,42 @@ class NRF24Server:
     def __process_network_messages(self, channel):
         while self.__radio.available():
             try:
-                taille_buffer = self.__radio.getDynamicPayloadSize()
-                payload = self.__radio.read(taille_buffer)
+                # taille_buffer = self.__radio.getDynamicPayloadSize()
+                payload = self.__radio.read(32)  # taille_buffer
 
-                self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
-                self.process_paquet_payload(payload)
+                # Ajouter payload sur liste FIFO
+                if len(self.__fifo_payload) < 100:
+                    self.__fifo_payload.append(payload)
+                    
+                # Declenche traitement messages
+                self.__event_reception.set()
 
             except Exception as e:
                 self.__logger.exception("NRF24MeshServer: Error processing radio message")
-                self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
-
+                # self.__stop_event.wait(5)  # Attendre 5 secondes avant de poursuivre
+                
+    def __process_paquets(self):
+        self.__event_reception.clear()  # Reset event pour prochain message
+        while( len(self.__fifo_payload) > 0 ):
+            # Extraire payload, retirer de la liste
+            payload = self.__fifo_payload[0]
+            self.__fifo_payload = self.__fifo_payload[1:]
+            
+            self.__logger.debug("Payload %s bytes\n%s" % (len(payload), binascii.hexlify(payload).decode('utf-8')))
+            self.process_paquet_payload(payload)
+                
     def __executer_cycle(self):
-        # self.__process_network_messages()
+        self.__process_network_messages(None)  # Cleanup si hiccup avec IRQ
 
         if datetime.datetime.utcnow() > self.__prochain_beacon:
             self.__prochain_beacon = datetime.datetime.utcnow() + self.__intervalle_beacon
             self.transmettre_beacon()
+            
+        # Traiter paquets dans FIFO
+        self.__process_paquets()
 
-        # compteur = 0
-        #while not self.__radio.available() and compteur < 500:
-        self.__stop_event.wait(2.0)  # Throttle le service
-        #    compteur = compteur + 1
+        # Throttle le service
+        self.__event_reception.wait(2.0)
 
     def run(self):
         self.__logger.debug("Run Thread RF24Server")
@@ -315,6 +333,7 @@ class NRF24Server:
     # Close all connections and the radio
     def fermer(self):
         self.__stop_event.set()
+        self.__event_reception.set()  # Permet de sortir de la boucle d'attente de messages
         try:
             self.__radio.stopListening()
             self.__radio = None
