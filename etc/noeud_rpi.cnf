@@ -55,7 +55,7 @@ commonName = supplied
 
 [ noeud_req_extensions ]
 subjectKeyIdentifier   = hash
-authorityKeyIdentifier = keyid,issuer
+# authorityKeyIdentifier = keyid,issuer
 basicConstraints       = CA:FALSE
 keyUsage               = digitalSignature, nonRepudiation, keyEncipherment
 subjectAltName         = @noeud_alts

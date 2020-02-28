@@ -135,7 +135,7 @@ preparer_rpi() {
              libxml2-dev libxmlsec1-dev python3-cffi \
              python3-setuptools python3-rpi.gpio \
              python3-smbus python3-dev i2c-tools \
-             libboost-python1.62-dev
+             libboost-python-dev
 
     LIBBOOST=/usr/lib/aarch64-linux-gnu
     if [ $ARCH != 'aarch64' ]; then
