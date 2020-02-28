@@ -12,20 +12,24 @@ def main():
     else:
         BOOST_LIB = 'boost_python'
 
-    setup(name="arduinocryptolibslw",
+    setup(name="arduinolibslw",
           version="0.1.0",
-          description="Python interface for the light-weight (LW) rweather arduinocryptolibs C library (https://github.com/rweather/arduinolibs)",
+          description=
+          """
+          Python interface for the light-weight (LW) 
+          rweather arduinolibs C library (https://github.com/rweather/arduinolibs)
+          """,
           author="Mathieu Dugre",
           author_email="mathieu.dugre@mdugre.info",
           ext_modules=[Extension(
-              "arduinocryptolibslw",
+              "arduinolibslw",
               [
                   path.join(path_libs, "Crypto/Crypto.cpp"),
                   path.join(path_libs, "Crypto/Cipher.cpp"),
                   path.join(path_libs, "Crypto/AuthenticatedCipher.cpp"),
                   path.join(path_libs, "CryptoLW/src/Acorn128.cpp"),
                   path.join(path_libs, "CryptoLW/src/Ascon128.cpp"),
-                  "acorn128.cpp",
+                  "arduinolibs.cpp",
               ],
               libraries=[BOOST_LIB],
               include_dirs=[
@@ -34,6 +38,7 @@ def main():
                   path.join(path_libs, "CryptoLW/src"),
               ]
           )])
+
 
 if __name__ == "__main__":
     main()

@@ -121,7 +121,7 @@ void checkTag_wrap(AuthenticatedCipher& ref, bp::object buf)
     }
 };
 
-BOOST_PYTHON_MODULE(arduinocryptolibslw)
+BOOST_PYTHON_MODULE(arduinolibslw)
 {
     bp::class_<Cipher, boost::noncopyable>("Cipher", bp::no_init);
 

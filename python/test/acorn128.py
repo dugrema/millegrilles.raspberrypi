@@ -1,4 +1,4 @@
-from arduinocryptolibslw import Acorn128, Ascon128
+from arduinolibslw import Acorn128, Ascon128
 import json
 import binascii
 

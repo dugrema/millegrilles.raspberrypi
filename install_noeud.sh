@@ -150,7 +150,7 @@ preparer_rpi() {
 
     # Installer drivers RF24 pour Python3
     if [ ! -d $REP_INSTALL/tmp/RF24 ]; then
-    git -C $REP_INSTALL/tmp clone https://github.com/nRF24/RF24.git
+      git -C $REP_INSTALL/tmp clone --single-branch https://github.com/nRF24/RF24.git
     fi
 
     cd $REP_INSTALL/tmp/RF24
@@ -158,6 +158,14 @@ preparer_rpi() {
     cd pyRF24
     sudo python3 setup.py install
     echo "[OK] Librarie RF24 installee"
+
+    if [ ! -d $REP_INSTALL/tmp/arduinolibs ]; then
+      git -C $REP_INSTALL/tmp clone --single-branch https://github.com/rweather/arduinolibs.git
+    fi
+
+    cd $REP_INSTALL/python/arduinolibs
+    sudo python3 setup.py install
+    echo "[OK] Librarie arduinolibs lw installee"
 
     cd $REP_INSTALL
   fi
