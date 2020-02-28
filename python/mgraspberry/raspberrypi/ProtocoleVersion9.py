@@ -1,6 +1,7 @@
 from struct import pack, unpack
-from Crypto.Cipher import AES
+# from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+from arduinolibslw import Acorn128
 
 import binascii
 import datetime
@@ -424,10 +425,14 @@ class AssembleurPaquets:
                     cle_partagee = self.__info_appareil.get('cle_partagee')
                     if cle_partagee is not None:
                         # Activer cipher
-                        self.__cipher = AES.new(cle_partagee, AES.MODE_EAX, nonce=self.__iv)
+                        # self.__cipher = AES.new(cle_partagee, AES.MODE_EAX, nonce=self.__iv)
+                        self.__cipher = Acorn128()
+                        self.__cipher.setKey(cle_partagee[0:16])
+                        self.__cipher.setIV(self.__iv)
                     
                         # Ajouter donnees auth (paquet 0, 22 bytes)
-                        self.__cipher.update(self.__paquets[0].data[0:22])
+                        # self.__cipher.update(self.__paquets[0].data[0:22])
+                        self.__cipher.addAuthData(self.__paquets[0].data[0:22])
                     else:
                         self.__logger.warning("Cle partagee non disponible")
                 else:
@@ -452,7 +457,8 @@ class AssembleurPaquets:
             
         if self.__cipher is not None:
             # Verifier le tag (hash)
-            self.__cipher.verify(self.__tag)
+            # self.__cipher.verify(self.__tag)
+            self.__cipher.checkTag(self.__tag)
             # except ValueError:
             #     self.__logger.error("Tags (hash) ne correspondent pas")
 
