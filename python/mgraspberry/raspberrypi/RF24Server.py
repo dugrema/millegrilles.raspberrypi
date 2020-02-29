@@ -28,7 +28,7 @@ class Constantes:
 
     ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
-    TRANSMISSION_NB_ESSAIS = 5
+    TRANSMISSION_NB_ESSAIS = 10
 
 
 class RadioThread:
@@ -148,6 +148,9 @@ class RadioThread:
                             break
                         self.__radio.startListening()
                     self.__stop_event.wait(0.002)  # Wait 2ms between attemps
+                
+                if not reponse:
+                    self.__logger.debug("Transmission paquet ECHEC")
                             
             except Exception:
                 self.__logger.exception("Erreur tranmission message vers %s" % str(adresse))
