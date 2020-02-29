@@ -265,9 +265,9 @@ class NRF24Server:
                             else:
                                 self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
                         except ValueError:
-                            self.__logger.error("Message rejete, tag invalide")
-
-                        del self.__assembleur_par_nodeId[from_node_id]
+                            self.__logger.error("Message nodeId: %d rejete, tag invalide" % from_node_id)
+                        finally:
+                            del self.__assembleur_par_nodeId[from_node_id]
                 else:
                     self.__logger.info("Message dropped, paquet 0 inconnu pour nodeId:%d" % from_node_id)
         else:

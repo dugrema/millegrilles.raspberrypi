@@ -404,6 +404,7 @@ class AssembleurPaquets:
         self.__paquets[0] = paquet0
         
         self.__cipher = None
+        self.__message_crypte = False
         
         self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
@@ -420,6 +421,7 @@ class AssembleurPaquets:
 
             if isinstance(paquet, PaquetIv):
                 self.__iv = paquet.iv
+                self.__message_crypte = True
                 
                 if self.__info_appareil is not None:
                     cle_partagee = self.__info_appareil.get('cle_partagee')
@@ -452,15 +454,23 @@ class AssembleurPaquets:
         :throws ValueError: Si tag ne correspond pas
         """
         liste_ordonnee = list()
-        for idx in range(1, len(self.__paquets)):
-            liste_ordonnee.append(self.__paquets[idx])
-            
-        if self.__cipher is not None:
-            # Verifier le tag (hash)
-            # self.__cipher.verify(self.__tag)
-            self.__cipher.checkTag(self.__tag)
-            # except ValueError:
-            #     self.__logger.error("Tags (hash) ne correspondent pas")
+        uuid_node = self.__paquet0.uuid
+        
+        if self.__message_crypte:
+            if self.__cipher is not None:
+                # Verifier le tag (hash)
+                try:
+                    self.__cipher.checkTag(self.__tag)
+                except ValueError:
+                    raise ValueError("%s: Message tag invalide" % uuid_node)
+            else:
+                raise ValueError("%s: Message crypte mais cle non disponible" % uuid_node)
+
+        try:
+            for idx in range(1, len(self.__paquets)):
+                liste_ordonnee.append(self.__paquets[idx])
+        except KeyError:
+            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message de nodeId %d" % (uuid_node, idx))
 
         dict_message = {
             'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
