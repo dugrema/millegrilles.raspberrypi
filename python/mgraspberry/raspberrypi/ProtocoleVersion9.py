@@ -470,7 +470,7 @@ class AssembleurPaquets:
             for idx in range(1, len(self.__paquets)):
                 liste_ordonnee.append(self.__paquets[idx])
         except KeyError:
-            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message de nodeId %d" % (uuid_node, idx))
+            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (uuid_node, idx))
 
         dict_message = {
             'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
