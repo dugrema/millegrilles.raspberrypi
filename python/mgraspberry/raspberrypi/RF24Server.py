@@ -73,7 +73,7 @@ class RadioThread:
 
         self.__information_appareils_par_uuid = dict()
 
-        self.__intervalle_beacon = datetime.timedelta(seconds=15.0)
+        self.__intervalle_beacon = datetime.timedelta(seconds=1.0)
         self.__prochain_beacon = datetime.datetime.utcnow()
         
         self.__message_beacon = None
@@ -147,7 +147,7 @@ class RadioThread:
                             self.__logger.debug("Transmission paquet OK")
                             break
                         self.__radio.startListening()
-                    self.__stop_event.wait(0.004)  # Wait 4ms between attemps
+                    self.__stop_event.wait(0.002)  # Wait 2ms between attemps
                             
             except Exception:
                 self.__logger.exception("Erreur tranmission message vers %s" % str(adresse))
