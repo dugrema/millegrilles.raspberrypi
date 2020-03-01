@@ -160,10 +160,10 @@ preparer_rpi() {
     echo "[OK] Librarie RF24 installee"
 
     if [ ! -d $REP_INSTALL/tmp/arduinolibs ]; then
-      git -C $REP_INSTALL/tmp clone --single-branch https://github.com/rweather/arduinolibs.git
+      git -C $REP_INSTALL/tmp clone -b python --single-branch https://github.com/dugrema/arduinolibs.git
     fi
 
-    cd $REP_INSTALL/python/arduinolibs
+    cd $REP_INSTALL/tmp/arduinolibs/libraries/CryptoLW/python
     sudo python3 setup.py install
     echo "[OK] Librarie arduinolibs lw installee"
 
