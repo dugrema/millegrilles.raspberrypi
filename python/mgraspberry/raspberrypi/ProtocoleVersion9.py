@@ -408,6 +408,10 @@ class AssembleurPaquets:
         
         self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
+    @property
+    def uuid_appareil(self):
+        return binascii.hexlify(self.__paquet0.uuid).decode('utf-8')
+
     def recevoir(self, data: bytes):
         """
         Recoit un nouveau paquet de payload. Retourne True quand tous les paquets sont recus.
@@ -436,7 +440,7 @@ class AssembleurPaquets:
                         # self.__cipher.update(self.__paquets[0].data[0:22])
                         self.__cipher.addAuthData(self.__paquets[0].data[0:22])
                     else:
-                        self.__logger.warning("Cle partagee non disponible")
+                        self.__logger.warning("Cle partagee non disponible, message va etre ignore")
                 else:
                     self.__logger.warning("Cle partage non disponible - aucune info appareil")
 
@@ -445,7 +449,7 @@ class AssembleurPaquets:
                 return True
 
         else:
-            self.__logger.error("Paquet non decodable")
+            self.__logger.error("Paquet non decodable : %s" % binascii.hexlify(data).decode('utf-8'))
 
         return False
 
@@ -454,7 +458,6 @@ class AssembleurPaquets:
         :throws ValueError: Si tag ne correspond pas
         """
         liste_ordonnee = list()
-        uuid_node = self.__paquet0.uuid
         
         if self.__message_crypte:
             if self.__cipher is not None:
@@ -462,18 +465,18 @@ class AssembleurPaquets:
                 try:
                     self.__cipher.checkTag(self.__tag)
                 except ValueError:
-                    raise ValueError("%s: Message tag invalide" % uuid_node)
+                    raise ValueError("%s: Message tag invalide" % self.uuid_appareil)
             else:
-                raise ValueError("%s: Message crypte mais cle non disponible" % uuid_node)
+                raise ValueError("%s: Message crypte mais cle non disponible" % self.uuid_appareil)
 
         try:
             for idx in range(1, len(self.__paquets)):
                 liste_ordonnee.append(self.__paquets[idx])
         except KeyError:
-            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (uuid_node, idx))
+            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (self.uuid_appareil, idx))
 
         dict_message = {
-            'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
+            'uuid_senseur': self.uuid_appareil,
             'timestamp': int(self.__timestamp_debut.timestamp()),
             'senseurs': [s.assembler() for s in liste_ordonnee],
             'mesh_address': self.__paquet0.from_node,
@@ -509,7 +512,8 @@ class AssembleurPaquets:
                     type_message = unpack('H', data[4:6])[0]
                     self.__logger.debug("Decrypte noPaquet : %d, type paquet : %d" % (no_paquet, type_message))
             else:
-                self.__logger.warning("Cipher non disponible pour donnees cryptees")
+                self.__logger.info("Cipher non disponible pour donnees cryptees")
+                raise ExceptionCipherNonDisponible("UUID: %s, paquet %d" % (self.uuid_appareil, no_paquet))
 
         if type_message == TypesMessages.TYPE_PAQUET_FIN:
             paquet = PaquetFin(data)
@@ -633,3 +637,7 @@ class PaquetReponseCleServeur2(PaquetTransmission):
         message = message + bytes(32-len(message))  # Padding a 32
 
         return message
+
+class ExceptionCipherNonDisponible(Exception):
+    
+    pass
