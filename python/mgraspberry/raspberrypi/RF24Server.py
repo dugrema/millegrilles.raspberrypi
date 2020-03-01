@@ -451,7 +451,6 @@ class NRF24Server:
     # Close all connections and the radio
     def fermer(self):
         self.__stop_event.set()
-        self.__event_reception.set()  # Permet de sortir de la boucle d'attente de messages
         try:
             self.__radio.stopListening()
             self.__radio = None
