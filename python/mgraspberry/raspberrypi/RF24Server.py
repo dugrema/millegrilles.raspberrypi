@@ -54,6 +54,7 @@ class RadioThread:
         
         self.__event_action = Event()
         self.__lock_radio = Lock()
+        self.__lock_reception = Lock()
         self.__thread = None
 
         self.__radio_PA_level = RF24.RF24_PA_LOW
@@ -98,7 +99,8 @@ class RadioThread:
     def recevoir(self, message):
         # Ajouter payload sur liste FIFO
         if len(self.__fifo_payload) < 100:
-            self.__fifo_payload.append(message)
+            with self.__lock_reception:
+                self.__fifo_payload.append(message)
         else:
             self.__logger.warning("FIFO reception message plein, message perdu")
         
@@ -239,7 +241,8 @@ class RadioThread:
 
     def next(self):
         try:
-            return self.__fifo_payload.pop(0)
+            with self.__lock_reception:
+                return self.__fifo_payload.pop(0)
         except IndexError:
             raise StopIteration()
 
@@ -402,26 +405,29 @@ class NRF24Server:
             else:
                 assembleur = self.__assembleur_par_nodeId.get(from_node_id)
                 if assembleur is not None:
-                    complet = assembleur.recevoir(payload)
-                    if complet:
-                        try:
-                            message, paquet_ack = assembleur.assembler()
-                            # message_json = json.dumps(message, indent=2)
-                            # self.__logger.debug("Message complet: \n%s" % message_json)
+                    try:
+                        complet = assembleur.recevoir(payload)
+                        if complet:
+                            try:
+                                message, paquet_ack = assembleur.assembler()
+                                # message_json = json.dumps(message, indent=2)
+                                # self.__logger.debug("Message complet: \n%s" % message_json)
 
-                            # Transmettre message recu a MQ
-                            if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
-                                self.transmettre_ack(paquet_ack)
-                                self._callback_soumettre(message)
-                            elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
-                                self.__logger.debug("Nouvelle cle : %s" % message)
-                                self.__ajouter_cle_appareil(from_node_id, message)
-                            else:
-                                self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
-                        except ValueError:
-                            self.__logger.error("Message nodeId: %d rejete, tag invalide" % from_node_id)
-                        finally:
-                            del self.__assembleur_par_nodeId[from_node_id]
+                                # Transmettre message recu a MQ
+                                if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
+                                    self.transmettre_ack(paquet_ack)
+                                    self._callback_soumettre(message)
+                                elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
+                                    self.__logger.debug("Nouvelle cle : %s" % message)
+                                    self.__ajouter_cle_appareil(from_node_id, message)
+                                else:
+                                    self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
+                            except ValueError as ve:
+                                self.__logger.error("%s" % str(ve))
+                            finally:
+                                del self.__assembleur_par_nodeId[from_node_id]
+                    except ProtocoleVersion9.ExceptionCipherNonDisponible as e:
+                        self.__logger.warning("Cipher non disponible %s:" % str(e))
                 else:
                     self.__logger.info("Message dropped, paquet 0 inconnu pour nodeId:%d" % from_node_id)
         else:
