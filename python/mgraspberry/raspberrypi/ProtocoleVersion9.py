@@ -1,7 +1,7 @@
 from struct import pack, unpack
 # from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from arduinolibslw import Acorn128
+from CryptoLW import Acorn128
 
 import binascii
 import datetime
