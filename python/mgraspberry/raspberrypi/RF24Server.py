@@ -102,7 +102,7 @@ class RadioThread:
         else:
             self.__logger.warning("FIFO reception message plein, message perdu")
         
-        self.__event_action.set()
+        self.__event_reception.set()
     
     def transmettre(self, paquet: ProtocoleVersion9.PaquetTransmission):
         self.__fifo_transmit.append(paquet)
