@@ -1,6 +1,7 @@
 from struct import pack, unpack
-from Crypto.Cipher import AES
+# from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+from CryptoLW import Acorn128
 
 import binascii
 import datetime
@@ -403,8 +404,13 @@ class AssembleurPaquets:
         self.__paquets[0] = paquet0
         
         self.__cipher = None
+        self.__message_crypte = False
         
         self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+
+    @property
+    def uuid_appareil(self):
+        return binascii.hexlify(self.__paquet0.uuid).decode('utf-8')
 
     def recevoir(self, data: bytes):
         """
@@ -419,17 +425,22 @@ class AssembleurPaquets:
 
             if isinstance(paquet, PaquetIv):
                 self.__iv = paquet.iv
+                self.__message_crypte = True
                 
                 if self.__info_appareil is not None:
                     cle_partagee = self.__info_appareil.get('cle_partagee')
                     if cle_partagee is not None:
                         # Activer cipher
-                        self.__cipher = AES.new(cle_partagee, AES.MODE_EAX, nonce=self.__iv)
+                        # self.__cipher = AES.new(cle_partagee, AES.MODE_EAX, nonce=self.__iv)
+                        self.__cipher = Acorn128()
+                        self.__cipher.setKey(cle_partagee[0:16])
+                        self.__cipher.setIV(self.__iv)
                     
                         # Ajouter donnees auth (paquet 0, 22 bytes)
-                        self.__cipher.update(self.__paquets[0].data[0:22])
+                        # self.__cipher.update(self.__paquets[0].data[0:22])
+                        self.__cipher.addAuthData(self.__paquets[0].data[0:22])
                     else:
-                        self.__logger.warning("Cle partagee non disponible")
+                        self.__logger.warning("Cle partagee non disponible, message va etre ignore")
                 else:
                     self.__logger.warning("Cle partage non disponible - aucune info appareil")
 
@@ -438,7 +449,7 @@ class AssembleurPaquets:
                 return True
 
         else:
-            self.__logger.error("Paquet non decodable")
+            self.__logger.error("Paquet non decodable : %s" % binascii.hexlify(data).decode('utf-8'))
 
         return False
 
@@ -447,17 +458,25 @@ class AssembleurPaquets:
         :throws ValueError: Si tag ne correspond pas
         """
         liste_ordonnee = list()
-        for idx in range(1, len(self.__paquets)):
-            liste_ordonnee.append(self.__paquets[idx])
-            
-        if self.__cipher is not None:
-            # Verifier le tag (hash)
-            self.__cipher.verify(self.__tag)
-            # except ValueError:
-            #     self.__logger.error("Tags (hash) ne correspondent pas")
+        
+        if self.__message_crypte:
+            if self.__cipher is not None:
+                # Verifier le tag (hash)
+                try:
+                    self.__cipher.checkTag(self.__tag)
+                except ValueError:
+                    raise ValueError("%s: Message tag invalide" % self.uuid_appareil)
+            else:
+                raise ValueError("%s: Message crypte mais cle non disponible" % self.uuid_appareil)
+
+        try:
+            for idx in range(1, len(self.__paquets)):
+                liste_ordonnee.append(self.__paquets[idx])
+        except KeyError:
+            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (self.uuid_appareil, idx))
 
         dict_message = {
-            'uuid_senseur': binascii.hexlify(self.__paquet0.uuid).decode('utf-8'),
+            'uuid_senseur': self.uuid_appareil,
             'timestamp': int(self.__timestamp_debut.timestamp()),
             'senseurs': [s.assembler() for s in liste_ordonnee],
             'mesh_address': self.__paquet0.from_node,
@@ -493,7 +512,8 @@ class AssembleurPaquets:
                     type_message = unpack('H', data[4:6])[0]
                     self.__logger.debug("Decrypte noPaquet : %d, type paquet : %d" % (no_paquet, type_message))
             else:
-                self.__logger.warning("Cipher non disponible pour donnees cryptees")
+                self.__logger.info("Cipher non disponible pour donnees cryptees")
+                raise ExceptionCipherNonDisponible("UUID: %s, paquet %d" % (self.uuid_appareil, no_paquet))
 
         if type_message == TypesMessages.TYPE_PAQUET_FIN:
             paquet = PaquetFin(data)
@@ -617,3 +637,7 @@ class PaquetReponseCleServeur2(PaquetTransmission):
         message = message + bytes(32-len(message))  # Padding a 32
 
         return message
+
+class ExceptionCipherNonDisponible(Exception):
+    
+    pass
