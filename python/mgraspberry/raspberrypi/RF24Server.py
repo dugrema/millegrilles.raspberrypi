@@ -30,6 +30,10 @@ class Constantes:
 
     TRANSMISSION_NB_ESSAIS = 10
 
+    RPI_V2_GPIO_P1_22 = 25
+    BCM2835_SPI_CS0 = 0
+    BCM2835_SPI_SPEED_8MHZ = 8000000
+
 
 class RadioThread:
     """
@@ -163,14 +167,14 @@ class RadioThread:
 
     def open_radio(self):
         self.__logger.info("Ouverture radio sur canal %s" % hex(self.__channel))
-        self.__radio = RF24.RF24(RF24.RPI_V2_GPIO_P1_22, RF24.BCM2835_SPI_CS0, RF24.BCM2835_SPI_SPEED_8MHZ)
+        self.__radio = RF24.RF24(Constantes.RPI_V2_GPIO_P1_22, Constantes.BCM2835_SPI_CS0, Constantes.BCM2835_SPI_SPEED_8MHZ)
 
         if not self.__radio.begin():
             raise Exception("Erreur demarrage radio")
 
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
-        self.__radio.setPALevel(self.__radio_PA_level)  # Power Amplifier
+        self.__radio.setPALevel(self.__radio_PA_level, False)  # Power Amplifier
         self.__radio.setRetries(8, 15)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
