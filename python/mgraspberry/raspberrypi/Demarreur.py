@@ -6,9 +6,8 @@ import json
 
 from uuid import uuid1
 
+from mgraspberry.raspberrypi.Constantes import Constantes
 from millegrilles.noeuds.Noeud import DemarreurNoeud
-
-logger = logging.getLogger(__name__)
 
 
 class DemarreurRaspberryPi(DemarreurNoeud):
@@ -26,6 +25,8 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger('mgraspberry').setLevel(logging.INFO)
         self._logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
+
+        self._appareils = list()
 
         self._affichage_lcd = None
         self._rf24_server = None
@@ -56,6 +57,11 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         )
 
         self._parser.add_argument(
+            '--dummy', action="store_true", required=False,
+            help="Utiliser appareil dummy"
+        )
+
+        self._parser.add_argument(
             '--dev', action="store_true", required=False,
             help="Developpement env (canal)"
         )
@@ -72,14 +78,14 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self.__idmg = self._contexte.idmg
 
         try:
-            with open('/opt/millegrilles/etc/noeud.json', 'r') as fichier:
+            with open(Constantes.FICHIER_NOEUD, 'r') as fichier:
                 config_noeud = json.load(fichier)
         except FileNotFoundError:
             config_noeud = dict()
 
         if config_noeud.get('uuid') is None:
             config_noeud['uuid'] = binascii.hexlify(uuid1().bytes).decode('utf-8')
-            with open('/opt/millegrilles/etc/noeud.json', 'w') as fichier:
+            with open(Constantes.FICHIER_NOEUD, 'w') as fichier:
                 json.dump(config_noeud, fichier)
 
         self.__config_noeud = config_noeud
@@ -100,46 +106,52 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             try:
                 self.inclure_lcd()
             except Exception as erreur_lcd:
-                logger.exception("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
+                self._logger.exception("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
                 # traceback.print_exc()
 
         if self._args.rf24master:
             try:
                 self.inclure_nrf24l01()
             except Exception as erreur_nrf24:
-                logger.exception("Erreur chargement hub nRF24L01: %s" % str(erreur_nrf24))
+                self._logger.exception("Erreur chargement hub nRF24L01: %s" % str(erreur_nrf24))
                 # traceback.print_exc()
 
         if self._args.am2302:
             try:
                 self.inclure_am2302()
             except Exception as erreur_nrf24:
-                logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
+                self._logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
                 # traceback.print_exc()
 
     def fermer(self):
         super().fermer()
 
-        if self._rf24_server is not None:
+        for app in self._appareils:
             try:
-                self._rf24_server.fermer()
-            except Exception as enrf:
-                logger.info("erreur fermeture NRF24L01: %s" % str(enrf))
+                app.fermer()
+            except:
+                self._logger.exception("Erreur fermeture appareil")
 
-        if self._affichage_lcd is not None:
-            try:
-                self._affichage_lcd.fermer()
-            except Exception as elcd:
-                logger.info("erreur fermeture LCD: %s" % str(elcd))
-
-        if self._am2302 is not None:
-            try:
-                self._am2302.fermer()
-            except Exception as eam:
-                logger.info("erreur fermeture AM2302: %s" % str(eam))
+        # if self._rf24_server is not None:
+        #     try:
+        #         self._rf24_server.fermer()
+        #     except Exception as enrf:
+        #         logger.info("erreur fermeture NRF24L01: %s" % str(enrf))
+        #
+        # if self._affichage_lcd is not None:
+        #     try:
+        #         self._affichage_lcd.fermer()
+        #     except Exception as elcd:
+        #         logger.info("erreur fermeture LCD: %s" % str(elcd))
+        #
+        # if self._am2302 is not None:
+        #     try:
+        #         self._am2302.fermer()
+        #     except Exception as eam:
+        #         logger.info("erreur fermeture AM2302: %s" % str(eam))
 
     def inclure_lcd(self):
-        logger.info("Activer LCD")
+        self._logger.info("Activer LCD")
         from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
 
         if self._args.timezone is None:
@@ -153,21 +165,31 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             self._args.lcdsenseurs
         )
         self._affichage_lcd.start()
+        self._appareils.append(self._affichage_lcd)
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):
-        logger.info("Activer RF24 Server")
+        self._logger.info("Activer RF24 Server")
         from mgraspberry.raspberrypi.RF24Server import NRF24Server
         self._rf24_server = NRF24Server(self.__idmg, self.__environnement)
         self._rf24_server.start(self.transmettre_lecture_callback)
+        self._appareils.append(self._rf24_server)
         self._chargement_reussi = True
 
     def inclure_am2302(self):
         pin = self._args.am2302
-        logger.info("Activer AS2302 sur pin %d" % pin)
+        self._logger.info("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
         self._am2302 = ThermometreAdafruitGPIO(self.__uuid, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)
+        self._appareils.append(self._am2302)
+        self._chargement_reussi = True
+
+    def inclure_dummy(self):
+        from mgraspberry.raspberrypi.AppareilDummy import AppareilDummy
+        appareil_dummy = AppareilDummy()
+        appareil_dummy.start(self.transmettre_lecture_callback)
+        self._appareils.append(appareil_dummy)
         self._chargement_reussi = True
 
 
