@@ -13,6 +13,7 @@ import struct
 
 import logging
 
+from mgraspberry.raspberrypi.Constantes import Constantes as ConstantesRPi
 from mgraspberry.raspberrypi import ProtocoleVersion9
 from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
     AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, \
@@ -21,7 +22,7 @@ from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
 
 GPIO.setmode(GPIO.BCM)
 
-class Constantes:
+class Constantes(ConstantesRPi):
     MG_CHANNEL_PROD = 0x5e
     MG_CHANNEL_INT = 0x24
     MG_CHANNEL_DEV = 0x0c
@@ -293,7 +294,7 @@ class NRF24Server:
         self.thread = None
         self.__configuration = None
 
-        self.__path_configuration = '/opt/millegrilles/etc/%s' % idmg
+        self.__path_configuration = Constantes.PATH_CONFIGURATION
         self.__reserve_dhcp = ReserveDHCP(path.join(self.__path_configuration, 'rf24dhcp.json'))
         self.__information_appareils_par_uuid = dict()
 
