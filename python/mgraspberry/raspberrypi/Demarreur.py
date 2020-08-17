@@ -122,6 +122,13 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             except Exception as erreur_nrf24:
                 self._logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
                 # traceback.print_exc()
+                
+        if self._args.dummy:
+            try:
+                self.inclure_dummy()
+            except Exception as erreur_dummy:
+                self._logger.exception("Erreur chargement DUMMY %s: %s" % (str(self._args.dummy), str(erreur_dummy)))
+            
 
     def fermer(self):
         super().fermer()
