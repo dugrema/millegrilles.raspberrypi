@@ -29,14 +29,22 @@ class ThermometreAdafruitGPIO:
     def lire(self):
         humidite, temperature = Adafruit_DHT.read_retry(self._sensor, self._pin)
 
+        timestamp = int(datetime.datetime.now().timestamp())
+
         dict_message = {
             'uuid_senseur': self._uuid_senseur,
-            'timestamp': int(datetime.datetime.now().timestamp()),
-            'senseurs': [{
-                'type': 'am2302',
-                'temperature': round(temperature, 1),
-                'humidite': round(humidite, 1),
-            }]
+            'senseurs': {
+                'am2302/%d/temperature' % self._pin: {
+                    'valeur': round(temperature, 1),
+                    'timestamp': timestamp,
+                    'type': 'temperature',
+                },
+                'am2302/%d/humidite' % self._pin: {
+                    'valeur': round(humidite, 1),
+                    'timestamp': timestamp,
+                    'type': 'humidite',
+                }
+            }
         }
 
         # Verifier que les valeurs ne sont pas erronees
