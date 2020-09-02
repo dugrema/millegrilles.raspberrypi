@@ -6,6 +6,7 @@ from CryptoLW import Acorn128
 import binascii
 import datetime
 import logging
+import json
 
 VERSION_PROTOCOLE = 9
 
@@ -486,12 +487,19 @@ class AssembleurPaquets:
         timestamp_message = int(self.__timestamp_debut.timestamp())
 
         # Preparer lecture senseurs
-        senseurs = list()
+        senseurs = dict()
         for lecture in [s.assembler() for s in liste_ordonnee]:
-            if lecture.get('type'):
-                # Ajouter timestamp
-                lecture['timestamp'] = timestamp_message
-                senseurs.append(lecture)
+            self.__logger.debug("Lecture RF24 : %s" % json.dumps(lecture, indent=2))
+            try:
+                for nom_senseur, valeur in lecture.items():
+                    if valeur.get('type'):
+                        # Ajouter timestamp
+                        valeur['timestamp'] = timestamp_message
+                        senseurs[nom_senseur] = valeur
+            except IndexError:
+                self.__logger.exception("Erreur traitement lecture")
+            except KeyError:
+                self.__logger.exception("Erreur traitement lecture")
 
         dict_message = {
             'mesh_address': self.__paquet0.from_node,
