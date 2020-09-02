@@ -56,20 +56,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             help="Timezone pytz pour l'horloge, ex: America/Halifax"
         )
 
-        self._parser.add_argument(
-            '--dummy', action="store_true", required=False,
-            help="Utiliser appareil dummy"
-        )
-
-        self._parser.add_argument(
-            '--dev', action="store_true", required=False,
-            help="Developpement env (canal)"
-        )
-        self._parser.add_argument(
-            '--int', action="store_true", required=False,
-            help="Integration env (canal)"
-        )
-
         # Completer le parsing via superclasse
         super().parse()
 
@@ -122,13 +108,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             except Exception as erreur_nrf24:
                 self._logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
                 # traceback.print_exc()
-                
-        if self._args.dummy:
-            try:
-                self.inclure_dummy()
-            except Exception as erreur_dummy:
-                self._logger.exception("Erreur chargement DUMMY %s: %s" % (str(self._args.dummy), str(erreur_dummy)))
-            
 
     def fermer(self):
         super().fermer()
