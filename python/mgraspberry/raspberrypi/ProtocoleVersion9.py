@@ -160,7 +160,8 @@ class PaquetFin(PaquetPayload):
         
     def assembler(self):
         return dict()
-        
+
+
 class PaquetCleAppareil1(PaquetPayload):
     
     def __init__(self, data: bytes):
@@ -224,9 +225,11 @@ class PaquetTP(PaquetPayload):
 
     def assembler(self):
         return {
-            'type': 'tp',
-            'temperature': self.temperature,
-            'pression': self.pression
+            'tp': {
+                'temperature': self.temperature,
+                'pression': self.pression,
+                'type': 'temperature',
+            }
         }
 
     def __str__(self):
@@ -256,9 +259,11 @@ class PaquetTH(PaquetPayload):
 
     def assembler(self):
         return {
-            'type': 'th',
-            'temperature': self.temperature,
-            'humidite': self.humidite
+            'th': {
+                'temperature': self.temperature,
+                'humidite': self.humidite,
+                'type': 'humidite',
+            }
         }
 
     def __str__(self):
@@ -290,10 +295,12 @@ class PaquetPower(PaquetPayload):
 
     def assembler(self):
         return {
-            'type': 'batterie',
-            'millivolt': self.millivolt,
-            'reserve': self.reserve,
-            'alerte': self.alerte,
+            'batterie': {
+                'millivolt': self.millivolt,
+                'reserve': self.reserve,
+                'alerte': self.alerte,
+                'type': 'batterie',
+            }
         }
 
     def __str__(self):
@@ -314,9 +321,9 @@ class PaquetOneWire(PaquetPayload):
 
     def assembler(self):
         return {
-            'type': 'onewire',
-            'adresse': binascii.hexlify(self.adresse_onewire).decode('utf-8'),
-            'data': binascii.hexlify(self.data_onewire).decode('utf-8'),
+            'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'): {
+                'data': binascii.hexlify(self.data_onewire).decode('utf-8'),
+            }
         }
 
     def __str__(self):
@@ -338,9 +345,10 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def assembler(self):
         return {
-            'type': 'onewire/temperature',
-            'adresse': binascii.hexlify(self.adresse_onewire).decode('utf-8'),
-            'temperature': self.temperature,
+            'onewire/temperature/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'): {
+                'temperature': self.temperature,
+                'type': 'temperature'
+            }
         }
 
     def decoder_temperature(self):
@@ -475,11 +483,20 @@ class AssembleurPaquets:
         except KeyError:
             raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (self.uuid_appareil, idx))
 
+        timestamp_message = int(self.__timestamp_debut.timestamp())
+
+        # Preparer lecture senseurs
+        senseurs = list()
+        for lecture in [s.assembler() for s in liste_ordonnee]:
+            if lecture.get('type'):
+                # Ajouter timestamp
+                lecture['timestamp'] = timestamp_message
+                senseurs.append(lecture)
+
         dict_message = {
-            'uuid_senseur': self.uuid_appareil,
-            'timestamp': int(self.__timestamp_debut.timestamp()),
-            'senseurs': [s.assembler() for s in liste_ordonnee],
             'mesh_address': self.__paquet0.from_node,
+            'uuid_senseur': self.uuid_appareil,
+            'senseurs': senseurs,
         }
 
         paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
