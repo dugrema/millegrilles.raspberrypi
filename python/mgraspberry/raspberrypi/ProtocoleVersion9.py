@@ -6,7 +6,6 @@ from CryptoLW import Acorn128
 import binascii
 import datetime
 import logging
-import json
 
 VERSION_PROTOCOLE = 9
 
@@ -177,9 +176,9 @@ class PaquetCleAppareil1(PaquetPayload):
         return 'Paquet cle appareil debut: %s' % binascii.hexlify(self.cle_publique_debut)
         
     def assembler(self):
-        return {
+        return [{
             'cle_publique_debut': self.cle_publique_debut,
-        }
+        }]
         
 
 class PaquetCleAppareil2(PaquetPayload):
@@ -198,9 +197,9 @@ class PaquetCleAppareil2(PaquetPayload):
         )
         
     def assembler(self):
-        return {
+        return [{
             'cle_publique_fin': self.cle_publique_fin,
-        }        
+        }] 
         
         
 class PaquetTP(PaquetPayload):
@@ -225,13 +224,18 @@ class PaquetTP(PaquetPayload):
             self.pression = float(pression) / 100.0
 
     def assembler(self):
-        return {
-            'tp': {
-                'temperature': self.temperature,
-                'pression': self.pression,
+        return [
+            {
+                'nom': 'tp/temperature',
+                'valeur': self.temperature,
                 'type': 'temperature',
+            },
+            {
+                'nom': 'tp/pression',
+                'valeur': self.pression,
+                'type': 'pression',
             }
-        }
+        ]
 
     def __str__(self):
         return 'Temperature {}, Pression {}'.format(self.temperature, self.pression)
@@ -259,13 +263,18 @@ class PaquetTH(PaquetPayload):
             self.humidite = float(humidite) / 10.0
 
     def assembler(self):
-        return {
-            'th': {
-                'temperature': self.temperature,
-                'humidite': self.humidite,
+        return [
+            {
+                'nom': 'th/temperature',
+                'valeur': self.temperature,
+                'type': 'temperature',
+            },
+            {
+                'nom': 'th/humidite',
+                'valeur': self.humidite,
                 'type': 'humidite',
             }
-        }
+        ]
 
     def __str__(self):
         return 'Temperature {}, Humidite {}'.format(self.temperature, self.humidite)
@@ -295,14 +304,23 @@ class PaquetPower(PaquetPayload):
             self.reserve = reserve
 
     def assembler(self):
-        return {
-            'batterie': {
-                'millivolt': self.millivolt,
-                'reserve': self.reserve,
-                'alerte': self.alerte,
-                'type': 'batterie',
+        return [
+            {
+                'nom': 'batterie/millivolt',
+                'valeur': self.millivolt,
+                'type': 'millivolt',
+            },
+            {
+                'nom': 'batterie/reserve',
+                'valeur': self.reserve,
+                'type': 'pct',
+            },
+            {
+                'nom': 'batterie/alerte',
+                'valeur': self.alerte,
+                'type': 'bool',
             }
-        }
+        ]
 
     def __str__(self):
         return 'Millivolt {}, Reserve {}, Alerte {}'.format(self.millivolt, self.reserve, self.alerte)
@@ -321,11 +339,11 @@ class PaquetOneWire(PaquetPayload):
         self.data_onewire = self.data[14:26]
 
     def assembler(self):
-        return {
-            'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'): {
-                'data': binascii.hexlify(self.data_onewire).decode('utf-8'),
-            }
-        }
+        return [{
+            'nom': 'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            'valeur': binascii.hexlify(self.data_onewire).decode('utf-8'),
+            'type': 'hex'
+        }]
 
     def __str__(self):
         return 'OneWire adresse {}, data {}'.format(
@@ -345,12 +363,11 @@ class PaquetOneWireTemperature(PaquetOneWire):
         self.decoder_temperature()
 
     def assembler(self):
-        return {
-            'onewire/temperature/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'): {
-                'temperature': self.temperature,
-                'type': 'temperature'
-            }
-        }
+        return [{
+            'nom': 'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            'valeur': self.temperature,
+            'type': 'temperature'
+        }]
 
     def decoder_temperature(self):
         val = self.data[14:16]
@@ -384,12 +401,23 @@ class PaquetAntenne(PaquetPayload):
         self.canal = values[2]
 
     def assembler(self):
-        return {
-            'type': 'antenne',
-            'pctSignal': self.pct_signal,
-            'forceEmetteur': self.force_emetteur,
-            'canal': self.canal,
-        }
+        return [
+            {
+                'nom': 'antenne/signal',
+                'type': 'pct',
+                'valeur': self.pct_signal,
+            },
+            {
+                'nom': 'antenne/force',
+                'type': 'int',
+                'valeur': self.force_emetteur,
+            },
+            {
+                'nom': 'antenne/canal',
+                'type': 'int',
+                'valeur': self.canal,
+            },
+        ]
 
     def __str__(self):
         return 'Antenne  pctSignal {}%, forceEmetteur {}, canal {}'.format(
@@ -488,24 +516,39 @@ class AssembleurPaquets:
 
         # Preparer lecture senseurs
         senseurs = dict()
-        for lecture in [s.assembler() for s in liste_ordonnee]:
-            self.__logger.debug("Lecture RF24 : %s" % json.dumps(lecture, indent=2))
-            try:
-                for nom_senseur, valeur in lecture.items():
-                    if valeur.get('type'):
+        cle_publique = list()
+        for paquets_assembles in [s.assembler() for s in liste_ordonnee]:
+            for lecture in paquets_assembles:
+                self.__logger.debug("Lecture RF24 : %s" % lecture)
+                try:
+                    if lecture.get('cle_publique_debut'):
+                        cle_publique.append(lecture['cle_publique_debut'])
+                        
+                    if lecture.get('cle_publique_fin'):
+                        cle_publique.append(lecture['cle_publique_fin'])
+
+                    if lecture.get('type') and lecture.get('nom'):
                         # Ajouter timestamp
-                        valeur['timestamp'] = timestamp_message
-                        senseurs[nom_senseur] = valeur
-            except IndexError:
-                self.__logger.exception("Erreur traitement lecture")
-            except KeyError:
-                self.__logger.exception("Erreur traitement lecture")
+                        nom_senseur = lecture.get('nom')
+                        del lecture['nom']
+                        lecture['timestamp'] = timestamp_message
+                        senseurs[nom_senseur] = lecture
+
+                except IndexError:
+                    self.__logger.exception("Erreur traitement lecture")
+                except KeyError:
+                    self.__logger.exception("Erreur traitement lecture")
 
         dict_message = {
             'mesh_address': self.__paquet0.from_node,
             'uuid_senseur': self.uuid_appareil,
             'senseurs': senseurs,
         }
+
+        if len(cle_publique) == 2:
+            cle_combinee = bytes(cle_publique[0] + cle_publique[1])
+            self.__logger.debug("Cle publique senseur : %s" % cle_combinee)
+            dict_message['cle_publique'] = cle_combinee
 
         paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
 

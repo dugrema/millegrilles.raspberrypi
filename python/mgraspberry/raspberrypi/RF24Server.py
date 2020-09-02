@@ -471,7 +471,7 @@ class NRF24Server:
     def __ajouter_cle_appareil(self, node_id, message):
         self.__logger.debug("Messages : %s"  % str(message))
         uuid_senseur = message['uuid_senseur']
-        cle = bytes(message['senseurs'][0]['cle_publique_debut'] + message['senseurs'][1]['cle_publique_fin'])
+        cle = message['cle_publique']
         self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
         
         # Generer nouvelle cle ed25519 pour identifier cle partagee
