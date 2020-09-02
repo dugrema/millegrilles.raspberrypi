@@ -40,6 +40,14 @@ class DemarreurRaspberryPi(DemarreurNoeud):
     def parse(self):
         # Ajouter arguments specifiques au RaspberryPi
         self._parser.add_argument(
+            '--dev', action="store_true", required=False,
+            help="Developpement env (canal)"
+        )
+        self._parser.add_argument(
+            '--int', action="store_true", required=False,
+            help="Integration env (canal)"
+        )
+        self._parser.add_argument(
             '--lcdsenseurs', type=str, nargs='+', required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
