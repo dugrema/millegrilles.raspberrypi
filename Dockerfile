@@ -9,6 +9,8 @@ VOLUME /opt/millegrilles/config
 
 ADD . /opt/src
 
+USER root
+
 RUN mkdir -p /opt/src/tmp && \
     git -C /opt/src/tmp clone -b python --single-branch https://github.com/dugrema/arduinolibs.git && \
     git -C /opt/src/tmp clone --single-branch https://github.com/nRF24/RF24.git && \
