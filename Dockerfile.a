@@ -1,18 +1,10 @@
-FROM rpi38
-
-ARG VERSION_MILLEGRILLES=1.31
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.31.20
 
 ADD . /opt/src
 
-RUN mkdir -p /opt/src/tmp && \
-    cd /opt/src && \
-    git -C /opt/src/tmp clone -b $VERSION_MILLEGRILLES --single-branch https://github.com/dugrema/millegrilles.consignation.python.git && \
-    \
-    cd /opt/src/tmp/millegrilles.consignation.python && \
+RUN cd /opt/src/python && \
     pip3 install -r requirements.txt && \
     python3 setup.py install && \
     \
-    cd /opt/src/python && \
-    pip3 install -r requirements.txt && \
-    python3 setup.py install
-
+    cd / \
+    rm -rf /opt/src

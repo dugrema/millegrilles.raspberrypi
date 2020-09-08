@@ -1,4 +1,4 @@
-FROM docker.maceroc.com/millegrilles_consignation_python_main:1.31.20
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.31.21
 
 ENV MG_CONFIG=/opt/millegrilles/config \
     MG_MQ_SSL=on \
@@ -36,6 +36,7 @@ RUN mkdir -p /opt/src/tmp && \
     \
     mkdir -p /opt/millegrilles/config && \
     \
+    cd / \
     apt remove -y libboost1.67-dev python3-setuptools && \
     rm -rf /var/apt/cache/* /var/lib/apt/lists/* && \
     rm -rf /opt/src
