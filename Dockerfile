@@ -1,6 +1,4 @@
-FROM python:3.8
-
-ARG VERSION_MILLEGRILLES=1.31
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.31.18
 
 ENV MG_CONFIG=/opt/millegrilles/config \
     MG_MQ_SSL=on \
@@ -14,7 +12,6 @@ ADD . /opt/src
 RUN mkdir -p /opt/src/tmp && \
     git -C /opt/src/tmp clone -b python --single-branch https://github.com/dugrema/arduinolibs.git && \
     git -C /opt/src/tmp clone --single-branch https://github.com/nRF24/RF24.git && \
-    git -C /opt/src/tmp clone -b $VERSION_MILLEGRILLES --single-branch https://github.com/dugrema/millegrilles.consignation.python.git && \
     \
     apt update && \
     apt install -y libboost-python1.67 libxml2 libxmlsec1 i2c-tools \
@@ -26,10 +23,6 @@ RUN mkdir -p /opt/src/tmp && \
     ./configure --driver=RPi && \
     make install && \
     cd pyRF24 && \
-    python3 setup.py install && \
-    \
-    cd /opt/src/tmp/millegrilles.consignation.python && \
-    pip3 install -r requirements.txt && \
     python3 setup.py install && \
     \
     cd /opt/src/python && \
