@@ -24,10 +24,24 @@ class ThermometreAdafruitGPIO:
         self._stop_event = Event()
         self._thread = None
 
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+
         self._stop_event.set()
 
     def lire(self):
         humidite, temperature = Adafruit_DHT.read_retry(self._sensor, self._pin)
+
+        self.__logger.debug("Lecture senseur : temperature = %s, humidite = %s" % (temperature, humidite))
+
+        try:
+            temperature_round = round(temperature, 1)
+        except:
+            temperature_round = None
+
+        try:
+            humidite_round = round(humidite, 1)
+        except:
+            humidite_round = None
 
         timestamp = int(datetime.datetime.now().timestamp())
 
@@ -35,12 +49,12 @@ class ThermometreAdafruitGPIO:
             'uuid_senseur': self._uuid_senseur,
             'senseurs': {
                 'am2302/%d/temperature' % self._pin: {
-                    'valeur': round(temperature, 1),
+                    'valeur': temperature_round,
                     'timestamp': timestamp,
                     'type': 'temperature',
                 },
                 'am2302/%d/humidite' % self._pin: {
-                    'valeur': round(humidite, 1),
+                    'valeur': humidite_round,
                     'timestamp': timestamp,
                     'type': 'humidite',
                 }
