@@ -1,6 +1,5 @@
 pika==0.12
 pymongo
 bson
-Adafruit_DHT
 donna25519
 pycryptodome

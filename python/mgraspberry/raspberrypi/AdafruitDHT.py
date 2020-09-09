@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 #   - Adafruit package Adafruit_DHT
 class ThermometreAdafruitGPIO:
 
-    def __init__(self, uuid_senseur, pin=24, sensor=Adafruit_DHT.AM2302, intervalle_lectures=50):
+    def __init__(self, uuid_senseur, pin=24, sensor=Adafruit_DHT.AM2302, intervalle_lectures=15):
         self._uuid_senseur = uuid_senseur
         self._pin = pin
         self._sensor = sensor
