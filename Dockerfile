@@ -1,4 +1,4 @@
-FROM docker.maceroc.com/millegrilles_consignation_python_main:1.32.1
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.33.5
 
 ENV MG_CONFIG=/opt/millegrilles/config \
     MG_MQ_SSL=on \
