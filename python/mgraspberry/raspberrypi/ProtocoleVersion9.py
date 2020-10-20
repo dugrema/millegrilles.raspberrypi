@@ -11,20 +11,21 @@ VERSION_PROTOCOLE = 9
 
 class TypesMessages:
     
-    TYPE_PAQUET0      = 0x0
+    TYPE_PAQUET0      = 0x0000
     TYPE_PAQUET_IV    = 0xFFFE
     TYPE_PAQUET_FIN   = 0xFFFF
-    TYPE_REQUETE_DHCP = 0x1
-    TYPE_REPONSE_DHCP = 0x2
-    TYPE_BEACON_DHCP  = 0x3
-    MSG_TYPE_REPONSE_ACK  = 0x9
+    TYPE_REQUETE_DHCP = 0x0001
+    TYPE_REPONSE_DHCP = 0x0002
+    TYPE_BEACON_DHCP  = 0x0003
+    MSG_TYPE_REPONSE_ACK  = 0x0009
+    MSG_TYPE_ECHANGE_IV   = 0x000A
 
-    MSG_TYPE_CLE_APPAREIL_1 = 0x4
-    MSG_TYPE_CLE_APPAREIL_2 = 0x5
-    MSG_TYPE_CLE_SERVEUR_1  = 0x6
-    MSG_TYPE_CLE_SERVEUR_2  = 0x7
-    MSG_TYPE_NOUVELLE_CLE   = 0x8
-    MSG_TYPE_REPONSE_ACK    = 0x9
+    MSG_TYPE_CLE_APPAREIL_1 = 0x0004
+    MSG_TYPE_CLE_APPAREIL_2 = 0x0005
+    MSG_TYPE_CLE_SERVEUR_1  = 0x0006
+    MSG_TYPE_CLE_SERVEUR_2  = 0x0007
+    MSG_TYPE_NOUVELLE_CLE   = 0x0008
+    MSG_TYPE_REPONSE_ACK    = 0x0009
         
     MSG_TYPE_LECTURES_COMBINEES = 0x101
     MSG_TYPE_LECTURE_TH         = 0x102
@@ -68,10 +69,14 @@ class Paquet0(Paquet):
     def __init__(self, data: bytes):
         self.uuid = None
         self.type_transmission = None
+        self.type_message = None
         super().__init__(data)
+        
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
     def _parse(self):
         super()._parse()
+        self.type_message = unpack('H', self.data[4:6])[0]
         self.type_transmission = unpack('H', self.data[6:8])[0]
         self.uuid = self.data[8:24]
 
@@ -80,6 +85,14 @@ class Paquet0(Paquet):
             binascii.hexlify(self.uuid).decode('utf-8'),
             binascii.hexlify(self.type_message).decode('utf-8')
         )
+        
+    def is_multi_paquets(self):
+        """
+        :return: True si le message requiert plusieurs paquets, False si le message est complet.
+        """
+        classe_message = self.type_message >> 8
+        self.__logger.debug("Classe de message recu : %d = classe %d" % (self.type_message, classe_message))
+        return classe_message not in [0x02]
         
     def assembler(self):
         return dict()
@@ -495,7 +508,14 @@ class AssembleurPaquets:
 
         return False
 
-    def assembler(self):
+    def assembler(self, info_appareil: dict = None):
+        if self.__paquet0.is_multi_paquets():
+            return self.assembler_multi_paquets()
+        else:
+            return self.assembler_paquet0(info_appareil)
+
+    def assembler_multi_paquets(self):
+    
         """
         :throws ValueError: Si tag ne correspond pas
         """
@@ -562,7 +582,59 @@ class AssembleurPaquets:
         paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
 
         return dict_message, paquet_ack
+    
+    def assembler_paquet0(self, info_appareil: dict):
+        """
+        Utilise pour assemble un message complet en un paquet
+        """
+        node_id = self.__paquet0.from_node
         
+        # Recuperer cle, iv de l'appareil
+        self.__logger.debug('Info appareil pour paquet 0 complet : %s' % str(info_appareil))
+        cle_partagee = info_appareil['cle_partagee']
+        iv = info_appareil['iv']
+
+        # Creer cipher pour dechiffrer
+        self.__cipher = Acorn128()
+        self.__cipher.setKey(cle_partagee[0:16])
+        self.__cipher.setIV(iv)
+        
+        data = self.__paquets[0].data
+    
+        # Ajouter donnees auth (paquet 0, 22 bytes)
+        self.__cipher.addAuthData(data[0:6])
+        data_dechiffre = self.__cipher.decrypt(data[6:15])
+        tag = data[15:31]
+        
+        try:
+            self.__cipher.checkTag(tag)
+        except ValueError:
+            raise ValueError("%s: Message tag invalide" % self.uuid_appareil)
+
+        self.__logger.debug("Data dechiffre : %s" % binascii.hexlify(data_dechiffre))
+        # temperature   - 2 bytes
+        # humidite      - 2 bytes
+        # batterie      - 2 bytes
+        # pctSignal     - 1 byte
+        # forceEmetteur - 1 byte
+        # canal         - 1 byte
+        temperature, humidite, pct_signal, force_emetteur, canal, batterie = \
+            unpack('hHHBBB', data_dechiffre)
+            
+        message = {
+            'temperature': temperature,
+            'humidite': humidite,
+            'signal': pct_signal,
+            'force_emetteur': 'force_emetteur',
+            'canal': canal,
+            'batterie': batterie,
+        }
+        self.__logger.debug("Lecture : %s" % str(message))
+        
+        paquet_ack = PaquetACKTransmission(node_id, tag)
+        
+        return message, paquet_ack
+    
     @property
     def doit_decrypter(self):
         return self.__iv is not None

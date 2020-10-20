@@ -390,11 +390,22 @@ class NRF24Server:
         self.transmettre_response_dhcp(node_id_reserve, paquet.uuid)
 
     def process_paquet0(self, node_id, payload):
+        self.__logger.debug("Paquet 0 recu")
         paquet0 = Paquet0(payload)
-        uuid_senseur = binascii.hexlify(paquet0.uuid).decode('utf-8')
-        info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
-        message = AssembleurPaquets(paquet0, info_appareil)
-        self.__assembleur_par_nodeId[node_id] = message
+        self.__logger.debug("Paquet 0 info : %s, %s" % (paquet0.from_node, paquet0.is_multi_paquets()))
+        
+        if paquet0.is_multi_paquets():
+            self.__logger.debug("Paquet 0 - multi paquets")
+            uuid_senseur = binascii.hexlify(paquet0.uuid).decode('utf-8')
+            info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
+            message = AssembleurPaquets(paquet0, info_appareil)
+            self.__assembleur_par_nodeId[node_id] = message
+        else:
+            # Traiter le contenu immediatement - 1 seul paquet pour ce type
+            self.__logger.debug("Paquet 0 - Traiter message complet")
+            info_appareil = self.get_infoappareil_par_nodeid(paquet0.from_node)
+            message = AssembleurPaquets(paquet0, info_appareil)
+            self._assembler_message(message)
 
     def process_paquet_payload(self, payload):
         
@@ -403,14 +414,14 @@ class NRF24Server:
         version, from_node_id, no_paquet, type_paquet = struct.unpack('BBHH', payload[0:6])
         
         if version == VERSION_PROTOCOLE:
-            self.__logger.debug("Type paquet: %d" % type_paquet) 
+            self.__logger.debug("Type paquet: %d, no: %d" % (type_paquet, no_paquet))
 
             if no_paquet == 0:
-                if type_paquet == TypesMessages.TYPE_PAQUET0:
+                if type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
+                    self.process_dhcp_request(payload)
+                else:
                     # Paquet0
                     self.process_paquet0(from_node_id, payload)
-                elif type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
-                    self.process_dhcp_request(payload)
             else:
                 assembleur = self.__assembleur_par_nodeId.get(from_node_id)
                 if assembleur is not None:
@@ -431,7 +442,13 @@ class NRF24Server:
             self.__logger.warning("Message version non supportee : %d" % version)
 
     def _assembler_message(self, assembleur):
-        message, paquet_ack = assembleur.assembler()
+        self.__logger.debug("Assembler message")
+        node_id = assembleur.node_id
+        
+        # Recuperer information appareil, utilise pour messages a 1 paquet
+        info_appareil = self.get_infoappareil_par_nodeid(node_id)
+        
+        message, paquet_ack = assembleur.assembler(info_appareil)
         # message_json = json.dumps(message, indent=2)
         # self.__logger.debug("Message complet: \n%s" % message_json)
 
@@ -446,6 +463,10 @@ class NRF24Server:
         elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
             self.__logger.debug("Nouvelle cle : %s" % message)
             self.__ajouter_cle_appareil(assembleur.node_id, message)
+        elif assembleur.type_transmission == TypesMessages.MSG_TYPE_ECHANGE_IV:
+            info_appareil = self.__information_appareils_par_uuid[assembleur.uuid_appareil]
+            self.__logger.debug("Nouveau IV recu : %s" % binascii.hexlify(info_appareil['iv']))
+            # Rien a faire, le IV est sauvegarde automatiquement sur chaque paquet IV confirme
         else:
             self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
 
@@ -514,6 +535,16 @@ class NRF24Server:
             info_appareil = dict()
             self.__information_appareils_par_uuid[uuid_senseur] = info_appareil
         info_appareil['cle_partagee'] = shared_key
+        info_appareil['node_id'] = node_id
+
+    def get_infoappareil_par_nodeid(self, node_id: int):
+        for uuid_appareil, info_app in self.__information_appareils_par_uuid.items():
+            self.__logger.debug("Info app : %s" % str(info_app))
+            if info_app['node_id'] == node_id:
+                info_complete = info_app.copy()
+                info_complete['uuid'] = uuid_appareil
+                return info_complete
+        return None
 
 
 class ReserveDHCP:
