@@ -436,6 +436,7 @@ class AssembleurPaquets:
         self.__tag = None
         self.__tag_calcule = None
         self.__iv = None
+        self.__iv_confirme = False
 
         self.__paquets = dict()
         self.__paquets[0] = paquet0
@@ -510,7 +511,7 @@ class AssembleurPaquets:
             for idx in range(1, len(self.__paquets)):
                 liste_ordonnee.append(self.__paquets[idx])
         except KeyError:
-            raise ValueError("%s: Transmission incomplete, paquet %d manquant sur message" % (self.uuid_appareil, idx))
+            raise ValueError("%s: Transmission incomplete, paquet manquant sur message" % self.uuid_appareil)
 
         timestamp_message = int(self.__timestamp_debut.timestamp())
 
@@ -518,6 +519,10 @@ class AssembleurPaquets:
         senseurs = dict()
         cle_publique = list()
         for paquets_assembles in [s.assembler() for s in liste_ordonnee]:
+            if self.__iv_confirme is False and self.__iv is not None:
+                # On a recu un paquet apres le IV, l'appareil sait qu'on l'a recu
+                self.__iv_confirme = True
+
             for lecture in paquets_assembles:
                 self.__logger.debug("Lecture RF24 : %s" % lecture)
                 try:
@@ -561,6 +566,14 @@ class AssembleurPaquets:
     @property
     def type_transmission(self):
         return self.__paquet0.type_transmission
+
+    @property
+    def iv(self):
+        return self.__iv
+
+    @property
+    def iv_confirme(self):
+        return self.__iv_confirme
 
     def map(self, data: bytes):
         no_paquet, type_message = unpack('HH', data[2:6])
