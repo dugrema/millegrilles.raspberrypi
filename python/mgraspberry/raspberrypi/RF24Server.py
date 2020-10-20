@@ -418,6 +418,10 @@ class NRF24Server:
                                 # message_json = json.dumps(message, indent=2)
                                 # self.__logger.debug("Message complet: \n%s" % message_json)
 
+                                if assembleur.iv_confirme:
+                                    # Conserver le nouveau IV pour l'appareil
+                                    self.__logger.debug("Nouveau IV pour appareil : %s", assembleur.iv)
+
                                 # Transmettre message recu a MQ
                                 if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
                                     self.transmettre_ack(paquet_ack)
