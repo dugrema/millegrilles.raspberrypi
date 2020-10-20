@@ -36,6 +36,7 @@ class TypesMessages:
     
     MSG_TYPE_LECTURE_TH_ANTENNE_POWER = 0x0202
     MSG_TYPE_LECTURE_TP_ANTENNE_POWER = 0x0203
+    MSG_TYPE_LECTURE_ONEWIRE          = 0x0204
     
     @staticmethod
     def map_type_message(type_message: int):
@@ -43,6 +44,8 @@ class TypesMessages:
             return MessageTemperatureHumiditeAntennePower
         elif type_message == TypesMessages.MSG_TYPE_LECTURE_TP_ANTENNE_POWER:
             return MessageTemperaturePressionAntennePower
+        elif type_message == TypesMessages.MSG_TYPE_LECTURE_ONEWIRE:
+            return MessageOnewireTemperature
         else:
             raise Exception("Type inconnu : %d" % type_message)
 
@@ -360,8 +363,15 @@ class PaquetOneWire(PaquetPayload):
 
     def _parse(self):
         super()._parse()
-        self.adresse_onewire = self.data[6:14]
-        self.data_onewire = self.data[14:26]
+        adresse_onewire, data_onewire = PaquetOneWire.decoder_onewire(self.data[6:26])
+        self.adresse_onewire = adresse_onewire
+        self.data_onewire = data_onewire
+
+    @staticmethod
+    def decoder_onewire(data):
+        adresse_onewire = data[0:8]
+        data_onewire = data[8:20]
+        return adresse_onewire, data_onewire
 
     def assembler(self):
         return [{
@@ -385,7 +395,7 @@ class PaquetOneWireTemperature(PaquetOneWire):
 
     def _parse(self):
         super()._parse()
-        self.decoder_temperature()
+        self.__decoder_temperature()
 
     def assembler(self):
         return [{
@@ -394,13 +404,17 @@ class PaquetOneWireTemperature(PaquetOneWire):
             'type': 'temperature'
         }]
 
-    def decoder_temperature(self):
-        val = self.data[14:16]
+    def __decoder_temperature(self):
+        self.temperature = PaquetOneWireTemperature.decoder_temperature(self.data_onewire)
+    
+    @staticmethod
+    def decoder_temperature(data):
+        val = data[0:2]
         if bytes(val) == bytes([0xFF, 0xFF]):
-            self.temperature = None  # Lecture nulle
+            return None  # Lecture nulle
         else:
             temp_val = unpack('h', val)[0]
-            self.temperature = temp_val / 16
+            return temp_val / 16
 
     def __str__(self):
         return 'OneWire adresse {}, temperature {}, data {}'.format(
@@ -670,8 +684,9 @@ class MessageChiffre(Paquet):
     def __init__(self, data: bytes, info_appareil: dict):
         self.info_appareil = info_appareil
         self.data_dechiffre = None
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
         super().__init__(data)
-    
+   
     def _parse(self):
         super()._parse()
 
@@ -690,6 +705,10 @@ class MessageChiffre(Paquet):
         
         data_chiffre = self.data[position_data_chiffree:position_tag]
         self.compute_tag = self.data[position_tag:fin_tag]
+        
+        self.__logger.debug("Compute tag. Debut tag : %d, fin tag : %d. Recu taille %d : %s" % 
+            (position_tag, fin_tag, len(self.compute_tag), binascii.hexlify(self.compute_tag))
+        )
 
         # Creer cipher pour dechiffrer
         cipher = Acorn128()
@@ -890,6 +909,54 @@ class MessageTemperaturePressionAntennePower(MessageChiffre):
                 'type': 'int',
             }
         ]
+        
+        return message, None
+
+
+class MessageOneWire(MessageChiffre):
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        self.info_appareil = info_appareil
+        
+        self.adresse_onewire = None
+        self.data_onewire = None
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        super().__init__(data, info_appareil)
+    
+    def _get_taille_payload(self):
+        return 20
+        
+    def _parse(self):
+        super()._parse()
+        
+        # adresse - 8 bytes
+        # data 1W - 12 bytes
+
+        adresse_onewire, data_onewire = PaquetOneWire.decoder_onewire(self.data_dechiffre)
+        self.adresse_onewire = adresse_onewire
+        self.data_onewire = data_onewire
+
+class MessageOnewireTemperature(MessageOneWire):
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        self.info_appareil = info_appareil
+        
+        self.temperature = None
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        super().__init__(data, info_appareil)
+    
+    def _parse(self):
+        super()._parse()
+        self.temperature = PaquetOneWireTemperature.decoder_temperature(self.data_onewire)
+
+    def assembler(self):
+        message = [{
+            'nom': 'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'),
+            'valeur': self.temperature,
+            'type': 'temperature'
+        }]
         
         return message, None
 
