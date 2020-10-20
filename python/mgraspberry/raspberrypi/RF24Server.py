@@ -79,7 +79,7 @@ class RadioThread:
 
         self.__information_appareils_par_uuid = dict()
 
-        self.__intervalle_beacon = datetime.timedelta(seconds=1.0)
+        self.__intervalle_beacon = datetime.timedelta(seconds=0.25)
         self.__prochain_beacon = datetime.datetime.utcnow()
         
         self.__message_beacon = None
@@ -176,7 +176,7 @@ class RadioThread:
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(self.__radio_PA_level, False)  # Power Amplifier
-        self.__radio.setRetries(8, 15)
+        self.__radio.setRetries(3, 3)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
