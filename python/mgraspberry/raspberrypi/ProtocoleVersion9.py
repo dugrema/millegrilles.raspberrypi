@@ -449,6 +449,10 @@ class AssembleurPaquets:
     @property
     def uuid_appareil(self):
         return binascii.hexlify(self.__paquet0.uuid).decode('utf-8')
+        
+    @property
+    def node_id(self):
+        return self.__paquet0.from_node
 
     def recevoir(self, data: bytes):
         """

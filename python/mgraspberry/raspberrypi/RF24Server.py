@@ -67,9 +67,11 @@ class RadioThread:
         if type_env == 'prod':
             self.__channel = Constantes.MG_CHANNEL_PROD
         elif type_env == 'int':
+            self.__logger.info("Mode INT")
             self.__channel = Constantes.MG_CHANNEL_INT
             self.__radio_PA_level = RF24.RF24_PA_LOW
         else:
+            self.__logger.info("Mode DEV")
             self.__channel = Constantes.MG_CHANNEL_DEV
             self.__radio_PA_level = RF24.RF24_PA_LOW
 
@@ -95,7 +97,7 @@ class RadioThread:
             while not self.__stop_event.is_set():
                 self.__transmettre_beacon()
                 self.__transmettre_paquets()
-                self.__event_action.wait(0.5)
+                self.__event_action.wait(0.1)
         finally:
             self.__logger.info("Arret de la radio")
             radio.stopListening()
@@ -176,7 +178,7 @@ class RadioThread:
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(self.__radio_PA_level, False)  # Power Amplifier
-        self.__radio.setRetries(3, 3)
+        self.__radio.setRetries(5, 3)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
@@ -199,10 +201,12 @@ class RadioThread:
     
     def __transmettre_beacon(self):
         if datetime.datetime.utcnow() > self.__prochain_beacon:
+            # self.__logger.debug("Beacon")
+
             self.__prochain_beacon = datetime.datetime.utcnow() + self.__intervalle_beacon
             try:
-                self.__radio.openWritingPipe(Constantes.ADDR_BROADCAST_DHCP)
                 self.__radio.stopListening()
+                self.__radio.openWritingPipe(Constantes.ADDR_BROADCAST_DHCP)
                 self.__radio.write(self.__message_beacon, True)
             finally:
                 self.__radio.startListening()
@@ -414,23 +418,7 @@ class NRF24Server:
                         complet = assembleur.recevoir(payload)
                         if complet:
                             try:
-                                message, paquet_ack = assembleur.assembler()
-                                # message_json = json.dumps(message, indent=2)
-                                # self.__logger.debug("Message complet: \n%s" % message_json)
-
-                                if assembleur.iv_confirme:
-                                    # Conserver le nouveau IV pour l'appareil
-                                    self.__logger.debug("Nouveau IV pour appareil : %s", assembleur.iv)
-
-                                # Transmettre message recu a MQ
-                                if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
-                                    self.transmettre_ack(paquet_ack)
-                                    self._callback_soumettre(message)
-                                elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
-                                    self.__logger.debug("Nouvelle cle : %s" % message)
-                                    self.__ajouter_cle_appareil(from_node_id, message)
-                                else:
-                                    self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
+                                self._assembler_message(assembleur)
                             except ValueError as ve:
                                 self.__logger.error("%s" % str(ve))
                             finally:
@@ -441,6 +429,25 @@ class NRF24Server:
                     self.__logger.info("Message dropped, paquet 0 inconnu pour nodeId:%d" % from_node_id)
         else:
             self.__logger.warning("Message version non supportee : %d" % version)
+
+    def _assembler_message(self, assembleur):
+        message, paquet_ack = assembleur.assembler()
+        # message_json = json.dumps(message, indent=2)
+        # self.__logger.debug("Message complet: \n%s" % message_json)
+
+        if assembleur.iv_confirme:
+            # Conserver le nouveau IV pour l'appareil
+            self.__ajouter_iv_appareil(assembleur.uuid_appareil, assembleur.iv)
+
+        # Transmettre message recu a MQ
+        if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
+            self.transmettre_ack(paquet_ack)
+            self._callback_soumettre(message)
+        elif assembleur.type_transmission == TypesMessages.MSG_TYPE_NOUVELLE_CLE:
+            self.__logger.debug("Nouvelle cle : %s" % message)
+            self.__ajouter_cle_appareil(assembleur.node_id, message)
+        else:
+            self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
 
     def transmettre_ack(self, paquet_ack):
         self.__logger.debug("Transmettre ACK vers Id: %s" % str(paquet_ack.node_id))
@@ -471,6 +478,12 @@ class NRF24Server:
             self.__radio = None
         except Exception as e:
             self.__logger.warning("NRF24MeshServer: Error closing radio: %s" % str(e))
+
+    def __ajouter_iv_appareil(self, uuid_senseur, iv):
+        info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
+        self.__logger.debug("Nouveau IV pour appareil %s : %s" % (uuid_senseur, binascii.hexlify(iv)))
+        if info_appareil is not None:
+            info_appareil['iv'] = iv
 
     def __ajouter_cle_appareil(self, node_id, message):
         self.__logger.debug("Messages : %s"  % str(message))
