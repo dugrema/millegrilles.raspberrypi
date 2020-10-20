@@ -712,8 +712,6 @@ class MessageChiffre(Paquet):
 class MessageTemperatureHumiditeAntennePower(MessageChiffre):
     
     def __init__(self, data: bytes, info_appareil: dict):
-        super().__init__(data, info_appareil)
-        
         self.info_appareil = info_appareil
         
         self.temperature = None
@@ -722,6 +720,9 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
         self.force_emetteur = None
         self.canal = None
         self.batterie = None
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        super().__init__(data, info_appareil)
     
     def _get_taille_payload(self):
         return 9
@@ -736,8 +737,12 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
         # forceEmetteur - 1 byte
         # canal         - 1 byte
 
-        temperature, humidite, pct_signal, force_emetteur, canal, batterie = \
+        temperature, humidite, batterie, pct_signal, force_emetteur, canal  = \
             unpack('hHHBBB', self.data_dechiffre)
+            
+        self.__logger.debug("Data dechiffree : temperature %s, humidite %s, pct_signal %s, force_emetteur %s, canal %s, batterie %s" % 
+            (temperature, humidite, pct_signal, force_emetteur, canal, batterie)
+        )
 
         if temperature == -32768:
             self.temperature = None
