@@ -35,11 +35,14 @@ class TypesMessages:
     MSG_TYPE_LECTURE_ANTENNE    = 0x106
     
     MSG_TYPE_LECTURE_TH_ANTENNE_POWER = 0x0202
+    MSG_TYPE_LECTURE_TP_ANTENNE_POWER = 0x0203
     
     @staticmethod
     def map_type_message(type_message: int):
         if type_message == TypesMessages.MSG_TYPE_LECTURE_TH_ANTENNE_POWER:
             return MessageTemperatureHumiditeAntennePower
+        elif type_message == TypesMessages.MSG_TYPE_LECTURE_TP_ANTENNE_POWER:
+            return MessageTemperaturePressionAntennePower
         else:
             raise Exception("Type inconnu : %d" % type_message)
 
@@ -774,6 +777,97 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
                 'nom': 'th/humidite',
                 'valeur': self.humidite,
                 'type': 'humidite',
+            },
+            {
+                'nom': 'batterie/millivolt',
+                'valeur': self.batterie,
+                'type': 'millivolt',
+            },
+            {
+                'nom': 'antenne/signal',
+                'valeur': self.pct_signal,
+                'type': 'pct',
+            },
+            {
+                'nom': 'antenne/force',
+                'valeur': self.force_emetteur,
+                'type': 'int',
+            },
+            {
+                'nom': 'antenne/canal',
+                'valeur': self.canal,
+                'type': 'int',
+            }
+        ]
+        
+        return message, None
+
+
+class MessageTemperaturePressionAntennePower(MessageChiffre):
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        self.info_appareil = info_appareil
+        
+        self.temperature = None
+        self.pression = None
+        self.pct_signal = None
+        self.force_emetteur = None
+        self.canal = None
+        self.batterie = None
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        super().__init__(data, info_appareil)
+    
+    def _get_taille_payload(self):
+        return 9
+        
+    def _parse(self):
+        super()._parse()
+        
+        # temperature   - 2 bytes
+        # pression      - 2 bytes
+        # batterie      - 2 bytes
+        # pctSignal     - 1 byte
+        # forceEmetteur - 1 byte
+        # canal         - 1 byte
+
+        temperature, pression, batterie, pct_signal, force_emetteur, canal  = \
+            unpack('hHHBBB', self.data_dechiffre)
+            
+        self.__logger.debug("Data dechiffree : temperature %s, pression %s, pct_signal %s, force_emetteur %s, canal %s, batterie %s" % 
+            (temperature, pression, pct_signal, force_emetteur, canal, batterie)
+        )
+
+        if temperature == -32768:
+            self.temperature = None
+        else:
+            self.temperature = float(temperature) / 10.0
+
+        if pression == 0xFF:
+            self.pression = None
+        else:
+            self.pression = float(pression) / 100.0
+
+        if batterie == 0xFFFF:
+            self.batterie = None
+        else:
+            self.batterie = batterie
+
+        self.pct_signal = pct_signal
+        self.force_emetteur = force_emetteur
+        self.canal = canal
+
+    def assembler(self):
+        message = [
+            {
+                'nom': 'th/temperature',
+                'valeur': self.temperature,
+                'type': 'temperature',
+            },
+            {
+                'nom': 'tp/pression',
+                'valeur': self.pression,
+                'type': 'pression',
             },
             {
                 'nom': 'batterie/millivolt',

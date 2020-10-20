@@ -178,7 +178,7 @@ class RadioThread:
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(self.__radio_PA_level, False)  # Power Amplifier
-        self.__radio.setRetries(5, 3)
+        self.__radio.setRetries(1, 5)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
