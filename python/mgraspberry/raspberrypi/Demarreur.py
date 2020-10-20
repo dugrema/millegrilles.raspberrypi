@@ -3,6 +3,7 @@ import traceback
 import logging
 import binascii
 import json
+import os
 
 from uuid import uuid1
 
@@ -78,9 +79,11 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             config_noeud = dict()
 
         if config_noeud.get('uuid') is None:
-            config_noeud['uuid'] = binascii.hexlify(uuid1().bytes).decode('utf-8')
-            with open(Constantes.FICHIER_NOEUD, 'w') as fichier:
-                json.dump(config_noeud, fichier)
+            self.__config_noeud = dict()
+            config_noeud['uuid'] = os.environ.get('NOEUD_ID')
+        #     config_noeud['uuid'] = binascii.hexlify(uuid1().bytes).decode('utf-8')
+        #     with open(Constantes.FICHIER_NOEUD, 'w') as fichier:
+        #         json.dump(config_noeud, fichier)
 
         self.__config_noeud = config_noeud
         self.__uuid = config_noeud['uuid']
