@@ -33,6 +33,15 @@ class TypesMessages:
     MSG_TYPE_LECTURE_POWER      = 0x104
     MSG_TYPE_LECTURE_ONEWIRE    = 0x105
     MSG_TYPE_LECTURE_ANTENNE    = 0x106
+    
+    MSG_TYPE_LECTURE_TH_ANTENNE_POWER = 0x0202
+    
+    @staticmethod
+    def map_type_message(type_message: int):
+        if type_message == TypesMessages.MSG_TYPE_LECTURE_TH_ANTENNE_POWER:
+            return MessageTemperatureHumiditeAntennePower
+        else:
+            raise Exception("Type inconnu : %d" % type_message)
 
 
 class Paquet:
@@ -587,57 +596,10 @@ class AssembleurPaquets:
         """
         Utilise pour assemble un message complet en un paquet
         """
-        node_id = self.__paquet0.from_node
-        
-        # Recuperer cle, iv de l'appareil
-        self.__logger.debug('Info appareil pour paquet 0 complet : %s' % str(info_appareil))
-        cle_partagee = info_appareil['cle_partagee']
-        iv = info_appareil['iv']
-
-        # Creer cipher pour dechiffrer
-        self.__cipher = Acorn128()
-        self.__cipher.setKey(cle_partagee[0:16])
-        self.__cipher.setIV(iv)
-        
-        data = self.__paquets[0].data
-    
-        # Ajouter donnees auth (paquet 0, 22 bytes)
-        self.__cipher.addAuthData(data[0:6])
-        data_dechiffre = self.__cipher.decrypt(data[6:15])
-        tag = data[15:31]
-        
-        try:
-            self.__cipher.checkTag(tag)
-        except ValueError:
-            raise ValueError("%s: Message tag invalide" % self.uuid_appareil)
-
-        self.__logger.debug("Data dechiffre : %s" % binascii.hexlify(data_dechiffre))
-        # temperature   - 2 bytes
-        # humidite      - 2 bytes
-        # batterie      - 2 bytes
-        # pctSignal     - 1 byte
-        # forceEmetteur - 1 byte
-        # canal         - 1 byte
-        temperature, humidite, pct_signal, force_emetteur, canal, batterie = \
-            unpack('hHHBBB', data_dechiffre)
-        
-        # Mapper temperature, humidite
-        temperature = float(temperature) / 10.0
-        humidite = float(humidite) / 10.0
-        
-        message = {
-            'temperature': temperature,
-            'humidite': humidite,
-            'signal': pct_signal,
-            'force_emetteur': 'force_emetteur',
-            'canal': canal,
-            'batterie': batterie,
-        }
-        self.__logger.debug("Lecture : %s" % str(message))
-        
-        paquet_ack = PaquetACKTransmission(node_id, tag)
-        
-        return message, paquet_ack
+        type_message = self.__paquet0.type_message
+        classe_message = TypesMessages.map_type_message(type_message)
+        paquet = classe_message(self.__paquet0.data, info_appareil)
+        return paquet.assembler()
     
     @property
     def doit_decrypter(self):
@@ -698,6 +660,139 @@ class AssembleurPaquets:
             paquet = PaquetAntenne(data)
 
         return paquet
+
+
+class MessageChiffre(Paquet):
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        self.info_appareil = info_appareil
+        self.data_dechiffre = None
+        super().__init__(data)
+    
+    def _parse(self):
+        super()._parse()
+
+        # Dechiffrer le contenu
+        
+        # Recuperer cle, iv de l'appareil
+        # self.__logger.debug('Info appareil pour paquet 0 complet : %s' % str(self.info_appareil))
+        cle_partagee = self.info_appareil['cle_partagee']
+        iv = self.info_appareil['iv']
+
+        taille_payload = self._get_taille_payload()
+        
+        position_data_chiffree = 6
+        position_tag = 6 + taille_payload
+        fin_tag = min(position_tag + 16, 32)  # Le tag a 16 bytes max, mais le paquet a 32 bytes max
+        
+        data_chiffre = self.data[position_data_chiffree:position_tag]
+        self.compute_tag = self.data[position_tag:fin_tag]
+
+        # Creer cipher pour dechiffrer
+        cipher = Acorn128()
+        cipher.setKey(cle_partagee[0:16])
+        cipher.setIV(iv)
+        
+        # Ajouter donnees auth
+        cipher.addAuthData(self.data[0:6])
+        self.data_dechiffre = cipher.decrypt(data_chiffre)
+        
+        try:
+            cipher.checkTag(self.compute_tag)
+        except ValueError:
+            raise ValueError("%s: Message tag invalide" % self.info_appareil['node_id'])
+
+    def _get_taille_payload(self):
+        """
+        :return: Nombre de bytes de payload
+        """
+        raise NotImplementedError()
+
+
+class MessageTemperatureHumiditeAntennePower(MessageChiffre):
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        super().__init__(data, info_appareil)
+        
+        self.info_appareil = info_appareil
+        
+        self.temperature = None
+        self.humidite = None
+        self.pct_signal = None
+        self.force_emetteur = None
+        self.canal = None
+        self.batterie = None
+    
+    def _get_taille_payload(self):
+        return 9
+        
+    def _parse(self):
+        super()._parse()
+        
+        # temperature   - 2 bytes
+        # humidite      - 2 bytes
+        # batterie      - 2 bytes
+        # pctSignal     - 1 byte
+        # forceEmetteur - 1 byte
+        # canal         - 1 byte
+
+        temperature, humidite, pct_signal, force_emetteur, canal, batterie = \
+            unpack('hHHBBB', self.data_dechiffre)
+
+        if temperature == -32768:
+            self.temperature = None
+        else:
+            self.temperature = float(temperature) / 10.0
+
+        if humidite == 0xFF:
+            self.humidite = None
+        else:
+            self.humidite = float(humidite) / 10.0
+
+        if batterie == 0xFFFF:
+            self.batterie = None
+        else:
+            self.batterie = batterie
+
+        self.pct_signal = pct_signal
+        self.force_emetteur = force_emetteur
+        self.canal = canal
+
+    def assembler(self):
+        message = [
+            {
+                'nom': 'th/temperature',
+                'valeur': self.temperature,
+                'type': 'temperature',
+            },
+            {
+                'nom': 'th/humidite',
+                'valeur': self.humidite,
+                'type': 'humidite',
+            },
+            {
+                'nom': 'batterie/millivolt',
+                'valeur': self.batterie,
+                'type': 'millivolt',
+            },
+            {
+                'nom': 'antenne/signal',
+                'valeur': self.pct_signal,
+                'type': 'pct',
+            },
+            {
+                'nom': 'antenne/force',
+                'valeur': self.force_emetteur,
+                'type': 'int',
+            },
+            {
+                'nom': 'antenne/canal',
+                'valeur': self.canal,
+                'type': 'int',
+            }
+        ]
+        
+        return message, None
 
 
 class PaquetTransmission:

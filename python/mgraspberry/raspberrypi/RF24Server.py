@@ -468,7 +468,10 @@ class NRF24Server:
             self.__logger.debug("Nouveau IV recu : %s" % binascii.hexlify(info_appareil['iv']))
             # Rien a faire, le IV est sauvegarde automatiquement sur chaque paquet IV confirme
         else:
-            self.__logger.error("Type transmission inconnu : %s" % str(assembleur.type_transmission))
+            if message is not None:
+                self._callback_soumettre(message)
+            if paquet_ack:
+                self.transmettre_ack(paquet_ack)
 
     def transmettre_ack(self, paquet_ack):
         self.__logger.debug("Transmettre ACK vers Id: %s" % str(paquet_ack.node_id))
