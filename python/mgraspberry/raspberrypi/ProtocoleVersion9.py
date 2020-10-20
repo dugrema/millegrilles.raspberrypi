@@ -620,7 +620,11 @@ class AssembleurPaquets:
         # canal         - 1 byte
         temperature, humidite, pct_signal, force_emetteur, canal, batterie = \
             unpack('hHHBBB', data_dechiffre)
-            
+        
+        # Mapper temperature, humidite
+        temperature = float(temperature) / 10.0
+        humidite = float(humidite) / 10.0
+        
         message = {
             'temperature': temperature,
             'humidite': humidite,
