@@ -405,7 +405,10 @@ class NRF24Server:
             self.__logger.debug("Paquet 0 - Traiter message complet")
             info_appareil = self.get_infoappareil_par_nodeid(paquet0.from_node)
             message = AssembleurPaquets(paquet0, info_appareil)
-            self._assembler_message(message)
+            try:
+                self._assembler_message(message)
+            except TypeError as te:
+                self.__logger.warning("Erreur lecture paquet0 node id:%s, probablement cle invalide: %s" % (paquet0.from_node, str(te)))
 
     def process_paquet_payload(self, payload):
         
