@@ -794,43 +794,37 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
         self.canal = canal
 
     def assembler(self):
-        message = [
-            {
-                'nom': 'th/temperature',
+        message = {
+            'th/temperature': {
                 'valeur': self.temperature,
                 'type': 'temperature',
             },
-            {
-                'nom': 'th/humidite',
+            'th/humidite': {
                 'valeur': self.humidite,
                 'type': 'humidite',
             },
-            {
-                'nom': 'batterie/millivolt',
+            'batterie/millivolt': {
                 'valeur': self.batterie,
                 'type': 'millivolt',
             },
-            {
-                'nom': 'antenne/signal',
+            'antenne/signal': {
                 'valeur': self.pct_signal,
                 'type': 'pct',
             },
-            {
-                'nom': 'antenne/force',
+            'antenne/force': {
                 'valeur': self.force_emetteur,
                 'type': 'int',
             },
-            {
-                'nom': 'antenne/canal',
+            'antenne/canal': {
                 'valeur': self.canal,
                 'type': 'int',
             }
-        ]
+        }
         
         
         # Ajouter timestamp a tous les messages
         timestamp_message = int(datetime.datetime.utcnow().timestamp())
-        for lecture in message:
+        for lecture in message.values():
             lecture['timestamp'] = timestamp_message
         
         return message, None
@@ -891,42 +885,36 @@ class MessageTemperaturePressionAntennePower(MessageChiffre):
         self.canal = canal
 
     def assembler(self):
-        message = [
-            {
-                'nom': 'th/temperature',
+        message = {
+            'th/temperature': {
                 'valeur': self.temperature,
                 'type': 'temperature',
             },
-            {
-                'nom': 'tp/pression',
+            'tp/pression': {
                 'valeur': self.pression,
                 'type': 'pression',
             },
-            {
-                'nom': 'batterie/millivolt',
+            'batterie/millivolt': {
                 'valeur': self.batterie,
                 'type': 'millivolt',
             },
-            {
-                'nom': 'antenne/signal',
+            'antenne/signal': {
                 'valeur': self.pct_signal,
                 'type': 'pct',
             },
-            {
-                'nom': 'antenne/force',
+            'antenne/force': {
                 'valeur': self.force_emetteur,
                 'type': 'int',
             },
-            {
-                'nom': 'antenne/canal',
+            'antenne/canal': {
                 'valeur': self.canal,
                 'type': 'int',
             }
-        ]
+        }
         
         # Ajouter timestamp a tous les messages
         timestamp_message = int(datetime.datetime.utcnow().timestamp())
-        for lecture in message:
+        for lecture in message.values():
             lecture['timestamp'] = timestamp_message
         
         return message, None
@@ -971,15 +959,17 @@ class MessageOnewireTemperature(MessageOneWire):
         self.temperature = PaquetOneWireTemperature.decoder_temperature(self.data_onewire)
 
     def assembler(self):
-        message = [{
-            'nom': 'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8'),
-            'valeur': self.temperature,
-            'type': 'temperature'
-        }]
+        label = 'onewire/' + binascii.hexlify(self.adresse_onewire).decode('utf-8')
+        message = {
+            label: {
+                'valeur': self.temperature,
+                'type': 'temperature'
+            }
+        }
 
         # Ajouter timestamp a tous les messages
         timestamp_message = int(datetime.datetime.utcnow().timestamp())
-        for lecture in message:
+        for lecture in message.values():
             lecture['timestamp'] = timestamp_message
         
         return message, None
