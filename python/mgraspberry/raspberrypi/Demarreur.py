@@ -6,9 +6,14 @@ import json
 import os
 
 from uuid import uuid1
+import RPi.GPIO as GPIO
 
 from mgraspberry.raspberrypi.Constantes import Constantes
 from millegrilles.noeuds.Noeud import DemarreurNoeud
+
+
+# Activer mode BCM pour les pins
+GPIO.setmode(GPIO.BCM)
 
 
 class DemarreurRaspberryPi(DemarreurNoeud):

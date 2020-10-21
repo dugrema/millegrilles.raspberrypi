@@ -1,5 +1,5 @@
 
 class Constantes:
 
-    PATH_CONFIGURATION = '/opt/millegrilles/config'
-    FICHIER_NOEUD = '%s/noeud.json' % PATH_CONFIGURATION
+    PATH_CONFIGURATION = '/var/opt/millegrilles/data'
+

@@ -1,7 +1,23 @@
+"""
+Serveur RF24
+Parametres configurables : 
+  command line :
+    --rf24master : Active ce module
+    --dev : Active mode dev, channel 0x0c
+    --int : Active mode int, channel 0x24
+  environ 
+    - RF24_PA : Force du power amplifier. Nombre de 1 a 3  (MIN, HIGH, MAX). Par defaut MIN.
+    - RF24_RADIO_PIN : No de PIN (BCM, RPI_V2), par defaut 25
+    - RF24_RADIO_IRQ : No de PIN du IRQ (BCM, RPI_V2), par defaut 24
+    - RF24_DHCP_CONF : Path du fichier de configuraiton dhcp. 
+                       Par defaut /var/opt/millegrilles/data/senseurspassifs.dhcp.conf
+    - FICHIER_RESEAU_CONF : Path du fichier de configuraiton de reseau RF24.
+                            Par defaut /var/opt/millegrilles/data/senseurspassifs.reseau.conf
+"""
 from __future__ import print_function
 import RF24
-import RPi.GPIO as GPIO
 import donna25519
+import RPi.GPIO as GPIO
 
 from threading import Thread, Event, Lock
 from os import path, urandom, environ
@@ -20,8 +36,6 @@ from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
     TypesMessages, PaquetReponseCleServeur1, PaquetReponseCleServeur2
 
 
-GPIO.setmode(GPIO.BCM)
-
 class Constantes(ConstantesRPi):
     MG_CHANNEL_PROD = 0x5e
     MG_CHANNEL_INT = 0x24
@@ -29,12 +43,17 @@ class Constantes(ConstantesRPi):
 
     ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
+    INTERVALLE_BEACON = 0.25
+
     TRANSMISSION_NB_ESSAIS = 3
 
     RPI_V2_GPIO_P1_22 = 25
     PIN_IRQ = 24
     BCM2835_SPI_CS0 = 0
     BCM2835_SPI_SPEED_8MHZ = 8000000
+    
+    FICHIER_CONFIG_RESEAU = 'senseurspassifs.reseau.conf'
+    FICHIER_CONFIG_DHCP = 'senseurspassifs.dhcp.json'
 
 
 class RadioThread:
@@ -84,7 +103,7 @@ class RadioThread:
 
         self.__information_appareils_par_uuid = dict()
 
-        self.__intervalle_beacon = datetime.timedelta(seconds=0.25)
+        self.__intervalle_beacon = datetime.timedelta(seconds=Constantes.INTERVALLE_BEACON)
         self.__prochain_beacon = datetime.datetime.utcnow()
         
         self.__message_beacon = None
@@ -100,7 +119,7 @@ class RadioThread:
             while not self.__stop_event.is_set():
                 self.__transmettre_beacon()
                 self.__transmettre_paquets()
-                self.__event_action.wait(0.1)
+                self.__event_action.wait(0.25)
         finally:
             self.__logger.info("Arret de la radio")
             radio.stopListening()
@@ -299,15 +318,22 @@ class NRF24Server:
 
         self._callback_soumettre = None
         self.thread = None
-        self.__configuration = None
 
-        self.__path_configuration = Constantes.PATH_CONFIGURATION
-        self.__reserve_dhcp = ReserveDHCP(path.join(self.__path_configuration, 'rf24dhcp.json'))
+        # Path et fichiers de configuration
+        path_configuration = environ.get('RF24_CONFIG_PATH') or Constantes.PATH_CONFIGURATION
+
+        self.__path_configuration_reseau = environ.get('RF24_RESEAU_CONF') or \
+            path.join(path_configuration, Constantes.FICHIER_CONFIG_RESEAU)
+        self.__configuration = None
+        
+        path_configuration_dhcp = environ.get('RF24_DHCP_CONF') or \
+            path.join(path_configuration, Constantes.FICHIER_CONFIG_DHCP)
+        self.__reserve_dhcp = ReserveDHCP(path_configuration_dhcp)
+        
         self.__information_appareils_par_uuid = dict()
 
         self.__traitement_radio = RadioThread(self.__stop_event, type_env)
 
-        self.__adresse_serveur = None
         self.__adresse_serveur = None
 
         self.initialiser_configuration()
@@ -321,7 +347,7 @@ class NRF24Server:
             self.__reserve_dhcp.sauvegarder_fichier_dhcp()
 
         try:
-            with open(path.join(self.__path_configuration, 'rf24server.json'), 'r') as fichier:
+            with open(path.join(self.__path_configuration_reseau), 'r') as fichier:
                 self.__configuration = json.load(fichier)
             self.__logger.info("Charge configuration:\n%s" % json.dumps(self.__configuration, indent=4))
 
@@ -343,7 +369,7 @@ class NRF24Server:
                 }
             }
             self.__logger.debug("Configuration: %s" % str(configuration))
-            with open(path.join(self.__path_configuration, 'rf24server.json'), 'w') as fichier:
+            with open(self.__path_configuration_reseau, 'w') as fichier:
                 json.dump(configuration, fichier)
             self.__configuration = configuration
 
