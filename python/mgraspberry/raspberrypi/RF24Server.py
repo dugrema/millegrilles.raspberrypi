@@ -334,6 +334,7 @@ class NRF24Server:
 
         self.__traitement_radio = RadioThread(self.__stop_event, type_env)
 
+        self.__cle_privee = None
         self.__adresse_serveur = None
 
         self.initialiser_configuration()
@@ -355,6 +356,8 @@ class NRF24Server:
             
             adresse_serveur = binascii.unhexlify(adresses['serveur'].encode('utf8'))
             adresse_reseau = binascii.unhexlify(adresses['reseau'].encode('utf8'))
+            cle_privee_bytes = binascii.unhexlify(self.__configuration['cle_privee'].encode('utf8'))
+            self.__cle_privee = donna25519.PrivateKey.load(cle_privee_bytes)
 
         except FileNotFoundError:
             self.__logger.info("Creation d'une nouvelle configuration pour le serveur")
@@ -362,11 +365,14 @@ class NRF24Server:
             adresse_serveur = urandom(3)  # Generer 3 bytes pour l'adresse serveur receiving pipe
             adresse_reseau = urandom(4)   # Generer 4 bytes pour l'adresse du reseau
             
+            self.__cle_privee = donna25519.PrivateKey()
+            
             configuration = {
                 'adresses': {
                     'serveur': binascii.hexlify(adresse_serveur).decode('utf8'),
                     'reseau': binascii.hexlify(adresse_reseau).decode('utf8'),
-                }
+                },
+                'cle_privee': binascii.hexlify(self.__cle_privee.private).decode('utf-8'),
             }
             self.__logger.debug("Configuration: %s" % str(configuration))
             with open(self.__path_configuration_reseau, 'w') as fichier:
@@ -438,6 +444,8 @@ class NRF24Server:
                 self._assembler_message(message)
             except TypeError as te:
                 self.__logger.warning("Erreur lecture paquet0 node id:%s, probablement cle invalide: %s" % (paquet0.from_node, str(te)))
+            except KeyError as ke:
+                self.__logger.warning("Erreur lecture paquet0 node id:%s, probablement iv manquant: %s" % (paquet0.from_node, str(ke)))
 
     def process_paquet_payload(self, payload):
         
@@ -546,15 +554,18 @@ class NRF24Server:
         uuid_senseur = message['uuid_senseur']
         cle = message['cle_publique']
         self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
+
+        # Conserver la cle publique de l'appareil pour reference future
+        self.__reserve_dhcp.conserver_cle(binascii.unhexlify(uuid_senseur.encode('utf-8')), cle)
         
         # Generer nouvelle cle ed25519 pour identifier cle partagee
         appareil_side = donna25519.PublicKey(cle)
-        serveur_side = donna25519.PrivateKey()
-        shared_key = serveur_side.do_exchange(appareil_side)
+        # serveur_side = donna25519.PrivateKey()
+        shared_key = self.__cle_privee.do_exchange(appareil_side)
         # self.__logger.debug("Cle shared %s : %s" % (uuid_senseur, binascii.hexlify(shared_key)))
         
         # Transmettre serveur side public
-        serveur_side_public = bytes(serveur_side.get_public().public)
+        serveur_side_public = bytes(self.__cle_privee.get_public().public)
         self.__logger.debug("Cle publique serveur : %s" % binascii.hexlify(serveur_side_public))
         # self.__logger.debug("Cle privee serveur : %s" % binascii.hexlify(bytes(serveur_side)))
         
@@ -579,6 +590,31 @@ class NRF24Server:
                 info_complete = info_app.copy()
                 info_complete['uuid'] = uuid_appareil
                 return info_complete
+        
+        # On n'a pas l'information par uuid, tenter de charger avec info
+        # connue dans le DHCP
+        info_appareil = self.__reserve_dhcp.get_info_par_nodeid(node_id)
+        if info_appareil is not None:
+            self.__logger.debug("Recharger appareil connu : %s" % str(info_appareil))
+            # On a trouve, charger la base de l'information
+            info_mappee = {'node_id': info_appareil['node_id']}
+
+            # Recalculer la cle partagee
+            try:
+                cle_publique = binascii.unhexlify(info_appareil.get('cle_publique'))
+                appareil_side = donna25519.PublicKey(cle_publique)
+                shared_key = self.__cle_privee.do_exchange(appareil_side)
+
+                info_mappee['cle_publique'] = cle_publique
+                info_mappee['cle_partagee'] = shared_key
+            except TypeError:
+                self.__logger.exception("Erreur chargement cle publique")
+            
+            # Note : la cle (uuid) est en format hex str, pas en bytes
+            self.__information_appareils_par_uuid[info_appareil['uuid']] = info_mappee
+            
+            return info_appareil
+        
         return None
 
 
@@ -607,9 +643,30 @@ class ReserveDHCP:
         with open(self.__fichier_dhcp, 'w') as fichier:
             json.dump(node_id_str_by_uuid, fichier)
 
+    def conserver_cle(self, uuid: bytes, cle_publique: bytes):
+        """
+        Conserver la cle publique d'un appareil
+        """
+        config_appareil = self.__node_id_by_uuid[uuid]
+        config_appareil['cle_publique'] = binascii.hexlify(cle_publique).decode('utf8')
+        self.sauvegarder_fichier_dhcp()
+
     def get_node_id(self, uuid: bytes):
-        node_id = self.__node_id_by_uuid.get(uuid)
-        return node_id
+        node_config = self.__node_id_by_uuid.get(uuid)
+        if node_config is not None:
+            return node_config['node_id']
+        return None
+
+    def get_info_par_uuid(self, uuid: bytes):
+        return self.__node_id_by_uuid.get(uuid)
+
+    def get_info_par_nodeid(self, node_id: int):
+        for uuid_app, info in self.__node_id_by_uuid.items():
+            if info.get('node_id') == node_id:
+                info_complete = info.copy()
+                info_complete['uuid'] = binascii.hexlify(uuid_app).decode('utf8')
+                return info_complete
+        return None
 
     def reserver(self, uuid: bytes):
         node_id = self.get_node_id(uuid)
@@ -618,7 +675,7 @@ class ReserveDHCP:
             node_id = self._identifier_nouvelle_adresse()
 
         if node_id is not None:
-            self.__node_id_by_uuid[uuid] = node_id
+            self.__node_id_by_uuid[uuid] = {'node_id': node_id}
             self.sauvegarder_fichier_dhcp()
 
         return node_id
@@ -630,7 +687,7 @@ class ReserveDHCP:
         :return:
         """
 
-        node_id_list = self.__node_id_by_uuid.values()
+        node_id_list = [config['node_id'] for config in self.__node_id_by_uuid.values()]
         for node_id in range(2, 254):
             if node_id not in node_id_list:
                 return node_id
