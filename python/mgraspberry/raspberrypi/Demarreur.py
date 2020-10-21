@@ -72,21 +72,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         super().setup_modules()
         self.__idmg = self._contexte.idmg
 
-        try:
-            with open(Constantes.FICHIER_NOEUD, 'r') as fichier:
-                config_noeud = json.load(fichier)
-        except FileNotFoundError:
-            config_noeud = dict()
-
-        if config_noeud.get('uuid') is None:
-            self.__config_noeud = dict()
-            config_noeud['uuid'] = os.environ.get('NOEUD_ID')
-        #     config_noeud['uuid'] = binascii.hexlify(uuid1().bytes).decode('utf-8')
-        #     with open(Constantes.FICHIER_NOEUD, 'w') as fichier:
-        #         json.dump(config_noeud, fichier)
-
-        self.__config_noeud = config_noeud
-        self.__uuid = config_noeud['uuid']
+        self.__uuid = os.environ.get('NOEUD_ID')
 
         if self._args.dev:
             self.__environnement = 'dev'
