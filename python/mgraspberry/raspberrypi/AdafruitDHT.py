@@ -48,12 +48,12 @@ class ThermometreAdafruitGPIO:
         dict_message = {
             'uuid_senseur': self._uuid_senseur,
             'senseurs': {
-                'am2302/%d/temperature' % self._pin: {
+                'dht/%d/temperature' % self._pin: {
                     'valeur': temperature_round,
                     'timestamp': timestamp,
                     'type': 'temperature',
                 },
-                'am2302/%d/humidite' % self._pin: {
+                'dht/%d/humidite' % self._pin: {
                     'valeur': humidite_round,
                     'timestamp': timestamp,
                     'type': 'humidite',

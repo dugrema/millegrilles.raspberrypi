@@ -616,7 +616,15 @@ class AssembleurPaquets:
         type_message = self.__paquet0.type_message
         classe_message = TypesMessages.map_type_message(type_message)
         paquet = classe_message(self.__paquet0.data, info_appareil)
-        return paquet.assembler()
+
+        senseurs, ack_NA = paquet.assembler()
+        dict_message = {
+            'mesh_address': self.__paquet0.from_node,
+            'uuid_senseur': info_appareil['uuid'],
+            'senseurs': senseurs,
+        }
+
+        return dict_message, None
     
     @property
     def doit_decrypter(self):
@@ -819,6 +827,12 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
             }
         ]
         
+        
+        # Ajouter timestamp a tous les messages
+        timestamp_message = int(datetime.datetime.utcnow().timestamp())
+        for lecture in message:
+            lecture['timestamp'] = timestamp_message
+        
         return message, None
 
 
@@ -910,6 +924,11 @@ class MessageTemperaturePressionAntennePower(MessageChiffre):
             }
         ]
         
+        # Ajouter timestamp a tous les messages
+        timestamp_message = int(datetime.datetime.utcnow().timestamp())
+        for lecture in message:
+            lecture['timestamp'] = timestamp_message
+        
         return message, None
 
 
@@ -957,6 +976,11 @@ class MessageOnewireTemperature(MessageOneWire):
             'valeur': self.temperature,
             'type': 'temperature'
         }]
+
+        # Ajouter timestamp a tous les messages
+        timestamp_message = int(datetime.datetime.utcnow().timestamp())
+        for lecture in message:
+            lecture['timestamp'] = timestamp_message
         
         return message, None
 

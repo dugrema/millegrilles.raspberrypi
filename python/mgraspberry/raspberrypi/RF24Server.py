@@ -578,7 +578,7 @@ class NRF24Server:
         
         info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
         if info_appareil is None:
-            info_appareil = dict()
+            info_appareil = {'uuid': uuid_senseur}
             self.__information_appareils_par_uuid[uuid_senseur] = info_appareil
         info_appareil['cle_partagee'] = shared_key
         info_appareil['node_id'] = node_id
@@ -597,7 +597,10 @@ class NRF24Server:
         if info_appareil is not None:
             self.__logger.debug("Recharger appareil connu : %s" % str(info_appareil))
             # On a trouve, charger la base de l'information
-            info_mappee = {'node_id': info_appareil['node_id']}
+            info_mappee = {
+                'uuid': info_appareil['uuid'],
+                'node_id': info_appareil['node_id']
+            }
 
             # Recalculer la cle partagee
             try:
