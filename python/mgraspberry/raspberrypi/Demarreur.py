@@ -20,10 +20,10 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def __init__(
             self,
-            pidfile='/run/mg-noeud.pid',
+            pidfile='/run/senseurspassifs.pid',
             stdin='/dev/null',
-            stdout='/var/log/millegrilles/noeud.out',
-            stderr='/var/log/millegrilles/noeud.log'
+            stdout='/var/log/millegrilles/senseurspassifs.out',
+            stderr='/var/log/millegrilles/senseurspassifs.log'
     ):
         # Call superclass init
         super().__init__(pidfile, stdin, stdout, stderr)
@@ -119,24 +119,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
                 app.fermer()
             except:
                 self._logger.exception("Erreur fermeture appareil")
-
-        # if self._rf24_server is not None:
-        #     try:
-        #         self._rf24_server.fermer()
-        #     except Exception as enrf:
-        #         logger.info("erreur fermeture NRF24L01: %s" % str(enrf))
-        #
-        # if self._affichage_lcd is not None:
-        #     try:
-        #         self._affichage_lcd.fermer()
-        #     except Exception as elcd:
-        #         logger.info("erreur fermeture LCD: %s" % str(elcd))
-        #
-        # if self._am2302 is not None:
-        #     try:
-        #         self._am2302.fermer()
-        #     except Exception as eam:
-        #         logger.info("erreur fermeture AM2302: %s" % str(eam))
 
     def inclure_lcd(self):
         self._logger.info("Activer LCD")
