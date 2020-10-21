@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 import donna25519
 
 from threading import Thread, Event, Lock
-from os import path, urandom
+from os import path, urandom, environ
 
 import binascii
 import json
@@ -29,9 +29,10 @@ class Constantes(ConstantesRPi):
 
     ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
 
-    TRANSMISSION_NB_ESSAIS = 10
+    TRANSMISSION_NB_ESSAIS = 3
 
     RPI_V2_GPIO_P1_22 = 25
+    PIN_IRQ = 24
     BCM2835_SPI_CS0 = 0
     BCM2835_SPI_SPEED_8MHZ = 8000000
 
@@ -62,18 +63,20 @@ class RadioThread:
         self.__lock_reception = Lock()
         self.__thread = None
 
-        self.__radio_PA_level = RF24.RF24_PA_LOW
+        self.__radio_PA_level = int(environ.get('RF24_PA') or RF24.RF24_PA_MIN)
+        self.__logger.info("Radio PA level : %d" % self.__radio_PA_level)
+        
+        self.__radio_pin = int(environ.get('RF24_RADIO_PIN') or Constantes.RPI_V2_GPIO_P1_22)
+        self.__radio_irq = int(environ.get('RF24_RADIO_IRQ') or 24)
 
         if type_env == 'prod':
             self.__channel = Constantes.MG_CHANNEL_PROD
         elif type_env == 'int':
             self.__logger.info("Mode INT")
             self.__channel = Constantes.MG_CHANNEL_INT
-            self.__radio_PA_level = RF24.RF24_PA_LOW
         else:
             self.__logger.info("Mode DEV")
             self.__channel = Constantes.MG_CHANNEL_DEV
-            self.__radio_PA_level = RF24.RF24_PA_LOW
 
         self.irq_gpio_pin = None
         self.__radio = None
@@ -170,7 +173,7 @@ class RadioThread:
 
     def open_radio(self):
         self.__logger.info("Ouverture radio sur canal %s" % hex(self.__channel))
-        self.__radio = RF24.RF24(Constantes.RPI_V2_GPIO_P1_22, Constantes.BCM2835_SPI_CS0, Constantes.BCM2835_SPI_SPEED_8MHZ)
+        self.__radio = RF24.RF24(self.__radio_pin, Constantes.BCM2835_SPI_CS0, Constantes.BCM2835_SPI_SPEED_8MHZ)
 
         if not self.__radio.begin():
             raise Exception("Erreur demarrage radio")
@@ -196,8 +199,8 @@ class RadioThread:
         # Connecter IRQ pour reception paquets
         # Masquer TX OK et fail sur IRQ, juste garder payload ready
         self.__radio.maskIRQ(True, True, False);
-        GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(24, GPIO.FALLING, callback=self.__process_network_messages)
+        GPIO.setup(Constantes.PIN_IRQ, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.add_event_detect(self.__radio_irq, GPIO.FALLING, callback=self.__process_network_messages)
     
     def __transmettre_beacon(self):
         if datetime.datetime.utcnow() > self.__prochain_beacon:
