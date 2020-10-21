@@ -636,7 +636,7 @@ class AssembleurPaquets:
 
     def map(self, data: bytes):
         no_paquet, type_message = unpack('HH', data[2:6])
-        self.__logger.debug("Mapping noPaquet : %d, type paquet : %d" % (no_paquet, type_message))
+        self.__logger.debug("Mapping node_id %d noPaquet : %d, type paquet : %d" % (self.node_id, no_paquet, type_message))
         
         paquet = None
         if no_paquet == TypesMessages.TYPE_PAQUET_FIN:

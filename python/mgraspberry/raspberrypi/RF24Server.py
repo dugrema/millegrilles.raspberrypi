@@ -454,7 +454,7 @@ class NRF24Server:
         version, from_node_id, no_paquet, type_paquet = struct.unpack('BBHH', payload[0:6])
         
         if version == VERSION_PROTOCOLE:
-            self.__logger.debug("Type paquet: %d, no: %d" % (type_paquet, no_paquet))
+            self.__logger.debug("Node Id: %d Type paquet: %d, no: %d" % (from_node_id, type_paquet, no_paquet))
 
             if no_paquet == 0:
                 if type_paquet == TypesMessages.TYPE_REQUETE_DHCP:
