@@ -37,6 +37,7 @@ class TypesMessages:
     MSG_TYPE_LECTURE_TH_ANTENNE_POWER = 0x0202
     MSG_TYPE_LECTURE_TP_ANTENNE_POWER = 0x0203
     MSG_TYPE_LECTURE_ONEWIRE          = 0x0204
+    MSG_TYPE_IV                       = 0x0205
     
     @staticmethod
     def map_type_message(type_message: int):
@@ -46,6 +47,8 @@ class TypesMessages:
             return MessageTemperaturePressionAntennePower
         elif type_message == TypesMessages.MSG_TYPE_LECTURE_ONEWIRE:
             return MessageOnewireTemperature
+        elif type_message == TypesMessages.MSG_TYPE_IV:
+            return MessageIv
         else:
             raise Exception("Type inconnu : %d" % type_message)
 
@@ -618,6 +621,16 @@ class AssembleurPaquets:
         paquet = classe_message(self.__paquet0.data, info_appareil)
 
         senseurs, ack_NA = paquet.assembler()
+
+        try:
+            self.__iv = paquet.iv
+            self.__iv_confirme = True
+        except AttributeError:
+            pass  # Ok, IV present sur message IV seulement
+        
+        if senseurs is None:
+            return None, None  # Rien a faire
+            
         dict_message = {
             'mesh_address': self.__paquet0.from_node,
             'uuid_senseur': info_appareil['uuid'],
@@ -687,6 +700,46 @@ class AssembleurPaquets:
         return paquet
 
 
+class MessageIv(Paquet):
+    """
+    Message self-contained avec IV
+    """
+    
+    def __init__(self, data: bytes, info_appareil: dict):
+        self.info_appareil = info_appareil
+        self.compute_tag = None
+        self.iv = None
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+        super().__init__(data)
+
+    def _parse(self):
+        super()._parse()
+
+        cle_partagee = self.info_appareil['cle_partagee']
+        self.__logger.debug("Cle partagee (len: %d) = %s" % (len(cle_partagee), binascii.hexlify(cle_partagee)))
+        
+        self.iv = self.data[6:22]
+        self.compute_tag = self.data[22:32]
+        self.__logger.debug("Compute tag (len: %d) = %s" % (len(self.compute_tag), binascii.hexlify(self.compute_tag)))
+        
+        # Creer cipher pour dechiffrer
+        cipher = Acorn128()
+        cipher.setKey(cle_partagee[0:16])
+        cipher.setIV(self.iv)
+        
+        # Ajouter donnees auth, pas de donnees chiffrees
+        cipher.addAuthData(self.data[0:22])
+        # dummy_byte = cipher.decrypt(self.data[22:23])  # Byte dummy
+        #if dummy_byte[0] != 0x7c:
+        #    self.__logger.warning("Dummy byte n'est pas 0x7c: %s" % binascii.hexlify(dummy_byte))
+        
+        # Lance une exception si tag invalide
+        cipher.checkTag(self.compute_tag)
+
+    def assembler(self):
+        return None, None
+
+
 class MessageChiffre(Paquet):
     
     def __init__(self, data: bytes, info_appareil: dict):
@@ -728,7 +781,7 @@ class MessageChiffre(Paquet):
         for iv in iv_list:
             self.__logger.debug("Tenter de dechiffrer avec iv %s" % binascii.hexlify(iv))
             try:
-                data_dechiffre = self.dechiffrer(cle_partagee[0:16], iv, self.data[0:6], data_chiffre, self.compute_tag)
+                data_dechiffre = MessageChiffre.dechiffrer(cle_partagee[0:16], iv, self.data[0:6], data_chiffre, self.compute_tag)
                 break
             except ValueError:
                 # Tester tous les IV candidats
@@ -752,7 +805,8 @@ class MessageChiffre(Paquet):
         """
         raise NotImplementedError()
 
-    def dechiffrer(self, cle_partagee, iv, auth_data, data_chiffre, compute_tag):
+    @staticmethod
+    def dechiffrer(cle_partagee, iv, auth_data, data_chiffre, compute_tag):
         # Creer cipher pour dechiffrer
         cipher = Acorn128()
         cipher.setKey(cle_partagee)
@@ -763,7 +817,7 @@ class MessageChiffre(Paquet):
         data_dechiffre = cipher.decrypt(data_chiffre)
         
         # Lance une exception si tag invalide
-        cipher.checkTag(self.compute_tag)
+        cipher.checkTag(compute_tag)
         
         return data_dechiffre
 

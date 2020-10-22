@@ -494,7 +494,7 @@ class NRF24Server:
 
         if assembleur.iv is not None:
             # Conserver le nouveau IV candidat pour l'appareil
-            self.__ajouter_iv_appareil(assembleur.uuid_appareil, assembleur.iv)
+            self.__ajouter_iv_appareil(info_appareil, assembleur.iv)
 
         # Transmettre message recu a MQ
         if assembleur.type_transmission == TypesMessages.MSG_TYPE_LECTURES_COMBINEES:
@@ -505,8 +505,11 @@ class NRF24Server:
             self.__ajouter_cle_appareil(assembleur.node_id, message)
         elif assembleur.type_transmission == TypesMessages.MSG_TYPE_ECHANGE_IV:
             info_appareil = self.__information_appareils_par_uuid[assembleur.uuid_appareil]
-            self.__logger.debug("Nouveau IV recu : %s" % binascii.hexlify(info_appareil['iv']))
+            self.__logger.debug("Nouveau IV recu : %s" % binascii.hexlify(info_appareil['iv_candidat']))
             # Rien a faire, le IV est sauvegarde automatiquement sur chaque paquet IV confirme
+        elif assembleur.type_transmission == TypesMessages.MSG_TYPE_IV:
+            # self.__ajouter_iv_appareil(assembleur.uuid_appareil, message['iv'])
+            self.__logger.debug("Nouveau IV recu : %s" % binascii.hexlify(info_appareil['iv_candidat']))
         else:
             if message is not None:
                 self._callback_soumettre(message)
@@ -543,9 +546,9 @@ class NRF24Server:
         except Exception as e:
             self.__logger.warning("NRF24MeshServer: Error closing radio: %s" % str(e))
 
-    def __ajouter_iv_appareil(self, uuid_senseur, iv):
-        info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
-        self.__logger.debug("Nouveau IV pour appareil %s : %s" % (uuid_senseur, binascii.hexlify(iv)))
+    def __ajouter_iv_appareil(self, info_appareil, iv):
+        # info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
+        self.__logger.debug("Nouveau IV pour appareil %s : %s" % (info_appareil['uuid'], binascii.hexlify(iv)))
         if info_appareil is not None:
             info_appareil['iv'] = info_appareil.get('iv') or iv  # Ne pas remplacer IV existant
             info_appareil['iv_candidat'] = iv
@@ -586,9 +589,8 @@ class NRF24Server:
 
     def get_infoappareil_par_nodeid(self, node_id: int):
         for uuid_appareil, info_app in self.__information_appareils_par_uuid.items():
-            self.__logger.debug("get_infoappareil_par_nodeid: Info app : %s" % str(info_app))
             if info_app['node_id'] == node_id:
-                # info_complete = info_app.copy()
+                self.__logger.debug("get_infoappareil_par_nodeid: Info app : %s" % str(info_app))
                 # info_complete['uuid'] = uuid_appareil
                 return info_app
         
