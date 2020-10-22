@@ -535,7 +535,6 @@ class NRF24Server:
         """
         for paquet in paquets:
             self.__traitement_radio.transmettre(paquet)
-        
 
     # Close all connections and the radio
     def fermer(self):

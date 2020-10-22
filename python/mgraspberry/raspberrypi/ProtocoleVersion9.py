@@ -716,7 +716,6 @@ class MessageIv(Paquet):
         super()._parse()
 
         cle_partagee = self.info_appareil['cle_partagee']
-        self.__logger.debug("Cle partagee (len: %d) = %s" % (len(cle_partagee), binascii.hexlify(cle_partagee)))
         
         self.iv = self.data[6:22]
         self.compute_tag = self.data[22:32]
@@ -729,9 +728,6 @@ class MessageIv(Paquet):
         
         # Ajouter donnees auth, pas de donnees chiffrees
         cipher.addAuthData(self.data[0:22])
-        # dummy_byte = cipher.decrypt(self.data[22:23])  # Byte dummy
-        #if dummy_byte[0] != 0x7c:
-        #    self.__logger.warning("Dummy byte n'est pas 0x7c: %s" % binascii.hexlify(dummy_byte))
         
         # Lance une exception si tag invalide
         cipher.checkTag(self.compute_tag)
@@ -903,7 +899,6 @@ class MessageTemperatureHumiditeAntennePower(MessageChiffre):
                 'type': 'int',
             }
         }
-        
         
         # Ajouter timestamp a tous les messages
         timestamp_message = int(datetime.datetime.utcnow().timestamp())
