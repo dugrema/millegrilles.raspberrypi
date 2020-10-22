@@ -492,8 +492,8 @@ class NRF24Server:
         # message_json = json.dumps(message, indent=2)
         # self.__logger.debug("Message complet: \n%s" % message_json)
 
-        if assembleur.iv_confirme:
-            # Conserver le nouveau IV pour l'appareil
+        if assembleur.iv is not None:
+            # Conserver le nouveau IV candidat pour l'appareil
             self.__ajouter_iv_appareil(assembleur.uuid_appareil, assembleur.iv)
 
         # Transmettre message recu a MQ
@@ -547,7 +547,8 @@ class NRF24Server:
         info_appareil = self.__information_appareils_par_uuid.get(uuid_senseur)
         self.__logger.debug("Nouveau IV pour appareil %s : %s" % (uuid_senseur, binascii.hexlify(iv)))
         if info_appareil is not None:
-            info_appareil['iv'] = iv
+            info_appareil['iv'] = info_appareil.get('iv') or iv  # Ne pas remplacer IV existant
+            info_appareil['iv_candidat'] = iv
 
     def __ajouter_cle_appareil(self, node_id, message):
         self.__logger.debug("Messages : %s"  % str(message))
@@ -585,11 +586,11 @@ class NRF24Server:
 
     def get_infoappareil_par_nodeid(self, node_id: int):
         for uuid_appareil, info_app in self.__information_appareils_par_uuid.items():
-            self.__logger.debug("Info app : %s" % str(info_app))
+            self.__logger.debug("get_infoappareil_par_nodeid: Info app : %s" % str(info_app))
             if info_app['node_id'] == node_id:
-                info_complete = info_app.copy()
-                info_complete['uuid'] = uuid_appareil
-                return info_complete
+                # info_complete = info_app.copy()
+                # info_complete['uuid'] = uuid_appareil
+                return info_app
         
         # On n'a pas l'information par uuid, tenter de charger avec info
         # connue dans le DHCP

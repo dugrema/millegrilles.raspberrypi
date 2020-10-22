@@ -703,7 +703,6 @@ class MessageChiffre(Paquet):
         # Recuperer cle, iv de l'appareil
         # self.__logger.debug('Info appareil pour paquet 0 complet : %s' % str(self.info_appareil))
         cle_partagee = self.info_appareil['cle_partagee']
-        iv = self.info_appareil['iv']
 
         taille_payload = self._get_taille_payload()
         
@@ -719,24 +718,54 @@ class MessageChiffre(Paquet):
         )
 
         # Creer cipher pour dechiffrer
-        cipher = Acorn128()
-        cipher.setKey(cle_partagee[0:16])
-        cipher.setIV(iv)
-        
-        # Ajouter donnees auth
-        cipher.addAuthData(self.data[0:6])
-        self.data_dechiffre = cipher.decrypt(data_chiffre)
-        
+        iv_list = [self.info_appareil['iv']]
         try:
-            cipher.checkTag(self.compute_tag)
-        except ValueError:
+            iv_list.insert(0, self.info_appareil['iv_candidat'])
+        except KeyError:
+            pass  # Pas de IV candidat
+        
+        data_dechiffre = None
+        for iv in iv_list:
+            self.__logger.debug("Tenter de dechiffrer avec iv %s" % binascii.hexlify(iv))
+            try:
+                data_dechiffre = self.dechiffrer(cle_partagee[0:16], iv, self.data[0:6], data_chiffre, self.compute_tag)
+                break
+            except ValueError:
+                # Tester tous les IV candidats
+                pass
+        
+        if data_dechiffre is None:
             raise ValueError("%s: Message tag invalide" % self.info_appareil['node_id'])
+        else:
+            self.data_dechiffre = data_dechiffre
+            
+            self.info_appareil['iv'] = iv
+            try:
+                del self.info_appareil['iv_candidat']
+                self.__logger.debug("Conserver iv %s, iv_candidat supprime : %s" % (binascii.hexlify(iv), str(self.info_appareil)))
+            except KeyError:
+                pass  # Candidat n'existe pas
 
     def _get_taille_payload(self):
         """
         :return: Nombre de bytes de payload
         """
         raise NotImplementedError()
+
+    def dechiffrer(self, cle_partagee, iv, auth_data, data_chiffre, compute_tag):
+        # Creer cipher pour dechiffrer
+        cipher = Acorn128()
+        cipher.setKey(cle_partagee)
+        cipher.setIV(iv)
+        
+        # Ajouter donnees auth
+        cipher.addAuthData(auth_data)
+        data_dechiffre = cipher.decrypt(data_chiffre)
+        
+        # Lance une exception si tag invalide
+        cipher.checkTag(self.compute_tag)
+        
+        return data_dechiffre
 
 
 class MessageTemperatureHumiditeAntennePower(MessageChiffre):
