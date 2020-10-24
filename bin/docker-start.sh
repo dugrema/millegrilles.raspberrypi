@@ -1,23 +1,44 @@
 #!/bin/bash
 
+# IMAGE=dugremat/millegrilles_senseurspassifs_rpi:armv7l_1.31.4
+IMAGE=smbustest
+
 sudo mkdir -p /var/opt/millegrilles/data
 sudo chown mathieu:mathieu /var/opt/millegrilles/data
 
+export MG_NOEUD_ID="90cebf41-d019-47fa-991b-dc1bd7bd6cc5"
+export MG_IDMG="QME8SjhaCFySD9qBt1AikQ1U7WxieJY2xDg2JCMczJST"
+#export RF24_PA=1
+
+CERTS=/home/mathieu/mgdev/certs
+export MG_MQ_PORT=5673
+export MG_MQ_CA_CERTS=$CERTS/pki.millegrille.cert
+export MG_MQ_KEYFILE=$CERTS/pki.monitor.key.20201021180033
+export MG_MQ_CERTFILE=$CERTS/pki.monitor.cert.20201021180033
+export MG_MQ_SSL=on
+export MG_MQ_AUTH_CERT=on
+export MG_MQ_EXCHANGE_DEFAUT="2.prive"
+
 docker run -it \
-  --env "MG_IDMG=JPtGcNcFSkfSdw49YsDpQHKxqTHMitpbPZW17a2JC54T" \
-  --env "MG_MQ_HOST=192.168.2.131" \
-  --env "MG_MQ_PORT=5673" \
+  --env "MG_IDMG=$MG_IDMG" \
+  --env "MG_MQ_PORT=$MG_MQ_PORT" \
   --env "MG_MQ_SSL=on" \
   --env "MG_MQ_AUTH_CERT=on" \
   --env "MG_MQ_CERTFILE=/run/secrets/cert.pem" \
   --env "MG_MQ_KEYFILE=/run/secrets/key.pem" \
   --env "MG_MQ_CA_CERTS=/run/secrets/millegrille.cert.pem" \
-  --env "MG_NOEUD_ID=db5d7936-660b-493a-8052-a475b56e8040" \
+  --env "MG_NOEUD_ID=$MG_NOEUD_ID" \
   --env "MG_CONFIG=/opt/millegrilles/config" \
   --env "MG_MQ_EXCHANGE_DEFAUT=2.prive" \
+  --add-host="mq:192.168.2.131" \
   --mount type=volume,src=millegrille-secrets,target=/run/secrets \
   --mount type=bind,src=/var/opt/millegrilles/data,target=/var/opt/millegrilles/data \
   --privileged --rm \
   --name senseurspassifs_rpi \
-  dugremat/millegrilles_senseurspassifs_rpi:armv7l_1.31.4 \
-  -m mgraspberry.raspberrypi.Demarreur --debug --rf24master --am2302 24 nofork
+  --entrypoint /usr/local/bin/python3.8 \
+  $IMAGE \
+  -m mgraspberry.raspberrypi.Demarreur --debug --dev --rf24master --am2302 18 --lcdsenseurs nofork
+
+
+#  -m mgraspberry.raspberrypi.Demarreur --debug --rf24master --am2302 18 --lcdsenseurs nofork
+

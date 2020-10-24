@@ -3,3 +3,4 @@ pymongo
 bson
 donna25519
 pycryptodome
+smbus

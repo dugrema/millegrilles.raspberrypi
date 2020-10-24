@@ -19,8 +19,8 @@ RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
     \
     apt update && \
     apt install -y libboost-python1.67 libxml2 libxmlsec1 i2c-tools \
-                   rpi.gpio python3-rpi.gpio python3-smbus python3-cffi \
-                   python3-setuptools python3-smbus && \
+                   rpi.gpio python3-rpi.gpio \
+                   python3-smbus python3-cffi python3-setuptools && \
     pip3 install rpi.gpio && \
     \
     cd /opt/src/tmp/RF24 && \
