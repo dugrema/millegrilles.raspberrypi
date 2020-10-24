@@ -30,9 +30,8 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger('mgraspberry').setLevel(logging.INFO)
+        logging.getLogger('mgdomaines').setLevel(logging.INFO)
         self._logger = logging.getLogger('%s.%s' % (__name__, self.__class__.__name__))
-
-        self._appareils = list()
 
         self._affichage_lcd = None
         self._rf24_server = None
@@ -54,7 +53,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             help="Integration env (canal)"
         )
         self._parser.add_argument(
-            '--lcdsenseurs', type=str, nargs='+', required=False,
+            '--lcdsenseurs', action="store_true", required=False,
             help="Active l'affichage LCD 2 lignes sur TWI smbus"
         )
         self._parser.add_argument(
@@ -122,20 +121,16 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
     def inclure_lcd(self):
         self._logger.info("Activer LCD")
-        from mgraspberry.raspberrypi.RPiTWI import AffichagePassifTemperatureHumiditePressionLCD2Lignes
+        from mgraspberry.raspberrypi.RPiTWI import AffichagePassifLCD2Lignes
 
         if self._args.timezone is None:
             timezone = self._args.timezone
         else:
             timezone = 'America/Toronto'
 
-        self._affichage_lcd = AffichagePassifTemperatureHumiditePressionLCD2Lignes(
-            self.contexte,
-            timezone,
-            self._args.lcdsenseurs
-        )
+        self._affichage_lcd = AffichagePassifLCD2Lignes(self.contexte, horloge_timezone=timezone)
         self._affichage_lcd.start()
-        self._appareils.append(self._affichage_lcd)
+        # self._appareils.append(self._affichage_lcd)
         self._chargement_reussi = True
 
     def inclure_nrf24l01(self):

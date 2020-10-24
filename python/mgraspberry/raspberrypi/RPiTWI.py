@@ -2,14 +2,13 @@
 
 import time
 import logging
-from mgdomaines.appareils.AffichagesPassifs import AfficheurSenseurPassifTemperatureHumiditePression
+from mgdomaines.appareils.AffichagesPassifs import AffichageAvecConfiguration
 
 import smbus  # Installer sur RPi (bus TWI)
 
-logger = logging.getLogger(__name__)
-
 
 class LcdHandler:
+
     # Define some device parameters
     I2C_ADDR = 0x27  # I2C device address
     LCD_WIDTH = 16  # Maximum characters per line
@@ -33,6 +32,7 @@ class LcdHandler:
     E_DELAY = 0.0005
 
     def __init__(self):
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
         self.lines = dict()
         self.lines[0] = "Initialising"
         self.lines[1] = "0%"
@@ -40,6 +40,7 @@ class LcdHandler:
         self.bus = None
 
     def initialise(self):
+        self.__logger.debug("LcdHandler.initialise()")
         self.bus = smbus.SMBus(1)  # Rev 2 Pi uses 1
 
         # Initialise display
@@ -97,16 +98,21 @@ class LcdHandler:
             self.lcd_byte(ord(message[i]), LcdHandler.LCD_CHR)
 
 
-class AffichagePassifTemperatureHumiditePressionLCD2Lignes(AfficheurSenseurPassifTemperatureHumiditePression):
+class AffichagePassifLCD2Lignes(AffichageAvecConfiguration):
 
-    def __init__(self, contexte, horloge_timezone: str, senseur_ids, intervalle_secs=30):
-        super().__init__(contexte, horloge_timezone, senseur_ids, intervalle_secs)
+    def __init__(self, contexte, noeud_id: str = None, horloge_timezone: str = None, intervalle_secs=30):
+        super().__init__(contexte, noeud_id, horloge_timezone, intervalle_secs)
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
         self._lcd_handler = LcdHandler()
         self._mapping_lignes_lcd = [LcdHandler.LCD_LINE_1, LcdHandler.LCD_LINE_2]
 
     def start(self):
+        self.__logger.debug("AffichagePassifLCD2Lignes.start %s")
+        
+        super().start()
+        
         self._lcd_handler.initialise()
-        super().start()  # Demarre plusieurs thread pour effectuer le travail (charger documents, etc)
+        self.__logger.debug("AffichagePassifLCD2Lignes.start - fin")
 
     def fermer(self):
         super().fermer()
