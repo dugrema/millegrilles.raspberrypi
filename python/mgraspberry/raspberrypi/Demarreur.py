@@ -1,18 +1,14 @@
 # Module qui permet de demarrer les appareils sur un Raspberry Pi
 import traceback
 import logging
-import binascii
-import json
 import os
 
-from uuid import uuid1
 import RPi.GPIO as GPIO
 
-from mgraspberry.raspberrypi.Constantes import Constantes
 from millegrilles.noeuds.Noeud import DemarreurNoeud
 
 
-# Activer mode BCM pour les pins
+# Activer mode BCM pour les pins - global
 GPIO.setmode(GPIO.BCM)
 
 
@@ -36,6 +32,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._affichage_lcd = None
         self._rf24_server = None
         self._am2302 = None
+
+        # Liste d'appareils (modules) charges
+        self._appareils = list()
 
         self.__uuid = None
         self.__config_noeud = None
@@ -148,13 +147,6 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._am2302 = ThermometreAdafruitGPIO(self.__uuid, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)
         self._appareils.append(self._am2302)
-        self._chargement_reussi = True
-
-    def inclure_dummy(self):
-        from mgraspberry.raspberrypi.AppareilDummy import AppareilDummy
-        appareil_dummy = AppareilDummy()
-        appareil_dummy.start(self.transmettre_lecture_callback)
-        self._appareils.append(appareil_dummy)
         self._chargement_reussi = True
 
 
