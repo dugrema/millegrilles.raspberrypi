@@ -145,7 +145,9 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         pin = self._args.am2302
         self._logger.info("Activer AS2302 sur pin %d" % pin)
         from mgraspberry.raspberrypi.AdafruitDHT import ThermometreAdafruitGPIO
-        self._am2302 = ThermometreAdafruitGPIO(self.__uuid, pin=pin)
+        
+        uuid_senseur = self._noeud_id + ':dht'
+        self._am2302 = ThermometreAdafruitGPIO(uuid_senseur, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)
         self._appareils.append(self._am2302)
         self._chargement_reussi = True
