@@ -2,6 +2,8 @@
 
 import time
 import logging
+import datetime 
+
 from mgdomaines.appareils.AffichagesPassifs import AffichageAvecConfiguration
 
 import smbus  # Installer sur RPi (bus TWI)
@@ -51,7 +53,7 @@ class LcdHandler:
         self.lcd_byte(0x28, LcdHandler.LCD_CMD)  # 101000 Data length, number of lines, font size
         self.lcd_byte(0x01, LcdHandler.LCD_CMD)  # 000001 Clear display
         time.sleep(LcdHandler.E_DELAY)
-
+        
     # Close LCD, shut down the backlight. Write "Stopped".
     def close(self):
         self.lcd_string("Stopped", LcdHandler.LCD_LINE_1)
@@ -121,7 +123,13 @@ class AffichagePassifLCD2Lignes(AffichageAvecConfiguration):
         super().start()
         
         self._lcd_handler.initialise()
-        self.__logger.debug("AffichagePassifLCD2Lignes.start - fin")
+
+        date_courante = datetime.datetime.now()
+        jour = date_courante.strftime('%Y-%m-%d')
+        heure = date_courante.strftime('%H:%M:%S')
+
+        self._lcd_handler.lcd_string('MilleGrilles', LcdHandler.LCD_LINE_1)
+        self._lcd_handler.lcd_string(jour + ' ' + heure, LcdHandler.LCD_LINE_2)
 
     def fermer(self):
         super().fermer()

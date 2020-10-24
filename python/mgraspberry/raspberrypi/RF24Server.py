@@ -310,11 +310,13 @@ class NRF24Server:
         if type_env == 'prod':
             pass
         elif type_env == 'int':
-            self.__logger.setLevel(logging.DEBUG)
-            logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
+            pass
+            # self.__logger.setLevel(logging.DEBUG)
+            # logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
         else:
-            self.__logger.setLevel(logging.DEBUG)
-            logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
+            pass
+            # self.__logger.setLevel(logging.DEBUG)
+            # logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
 
         self._callback_soumettre = None
         self.thread = None
