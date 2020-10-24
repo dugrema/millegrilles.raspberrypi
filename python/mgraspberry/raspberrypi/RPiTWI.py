@@ -96,6 +96,15 @@ class LcdHandler:
 
         for i in range(LcdHandler.LCD_WIDTH):
             self.lcd_byte(ord(message[i]), LcdHandler.LCD_CHR)
+            
+    def set_backlight(self, actif):
+        if actif:
+            self.LCD_BACKLIGHT = LcdHandler.LCD_BACKLIGHT_ON
+        else:
+            self.LCD_BACKLIGHT = LcdHandler.LCD_BACKLIGHT_OFF
+        
+        # Ecrire un byte dummy pour activer le changement
+        self.lcd_byte(0x00, LcdHandler.LCD_CMD)  # 000000 No effect
 
 
 class AffichagePassifLCD2Lignes(AffichageAvecConfiguration):
@@ -123,3 +132,7 @@ class AffichagePassifLCD2Lignes(AffichageAvecConfiguration):
 
         for no_ligne in range(0, min(len(lignes_affichage), len(self._mapping_lignes_lcd))):
             self._lcd_handler.lcd_string(lignes_affichage[no_ligne], self._mapping_lignes_lcd[no_ligne])
+
+    def toggle_lcd_onoff(self, valeur: str):
+        super().toggle_lcd_onoff(valeur)
+        self._lcd_handler.set_backlight(self._affichage_actif)
