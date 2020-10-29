@@ -30,6 +30,7 @@ docker run -it \
   --env "MG_NOEUD_ID=$MG_NOEUD_ID" \
   --env "MG_CONFIG=/opt/millegrilles/config" \
   --env "MG_MQ_EXCHANGE_DEFAUT=2.prive" \
+  --env "RF24_PA=1" \
   --add-host="mq:192.168.2.131" \
   --mount type=volume,src=millegrille-secrets,target=/run/secrets \
   --mount type=bind,src=/var/opt/millegrilles/data,target=/var/opt/millegrilles/data \
@@ -40,5 +41,7 @@ docker run -it \
   -m mgraspberry.raspberrypi.Demarreur --debug --dev --rf24master --am2302 18 --lcdsenseurs nofork
 
 
+#  -m mgraspberry.raspberrypi.Demarreur --debug --dev --rf24master nofork
+#  -m mgraspberry.raspberrypi.Demarreur --debug --dev --rf24master --am2302 18 --lcdsenseurs nofork
 #  -m mgraspberry.raspberrypi.Demarreur --debug --rf24master --am2302 18 --lcdsenseurs nofork
 
