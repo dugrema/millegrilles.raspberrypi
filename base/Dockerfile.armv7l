@@ -23,7 +23,7 @@ RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
     python3 setup.py install && \
     \
     cd /opt/src/tmp/Adafruit_Python_DHT && \
-    python3 setup.py install && \
+    python3 setup.py install --force-pi2 && \
     \
     cd /opt/src/tmp/arduinolibs/libraries/CryptoLW/python && \
     python3 setup.py install && \
