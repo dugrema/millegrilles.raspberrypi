@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # IMAGE=dugremat/millegrilles_senseurspassifs_rpi:armv7l_1.31.4
-IMAGE=docker.maceroc.com/millegrilles_senseurspassifs_rpi:armv7l_1.34.0
+IMAGE=docker.maceroc.com/millegrilles_senseurspassifs_rpi:armv7l_1.34.2
 
 sudo mkdir -p /var/opt/millegrilles/data
 sudo chown mathieu:mathieu /var/opt/millegrilles/data
