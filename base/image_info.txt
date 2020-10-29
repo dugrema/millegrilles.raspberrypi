@@ -2,9 +2,9 @@
 
 REPO=docker.maceroc.com
 DOCKERHUB_REPO=dugremat
-NAME=millegrilles_senseurspassifs_rpi
+NAME=millegrilles_senseurspassifs_base
 BRANCH=`git name-rev --name-only HEAD`
 ARCH_SUPPORTEES=( armv7l )
-BUILD=2
+BUILD=0
 
 VERSION=$BRANCH.$BUILD
