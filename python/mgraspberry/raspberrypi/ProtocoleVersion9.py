@@ -1,11 +1,13 @@
-from struct import pack, unpack
-# from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
-from CryptoLW import Acorn128
-
 import binascii
 import datetime
 import logging
+
+from struct import pack, unpack
+from zlib import crc32
+
+# from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from CryptoLW import Acorn128
 
 VERSION_PROTOCOLE = 9
 
@@ -216,11 +218,13 @@ class PaquetCleAppareil2(PaquetPayload):
     
     def __init__(self, data: bytes):
         self.cle_publique_fin = None
+        self.crc32 = None
         super().__init__(data)
 
     def _parse(self):
         super()._parse()
         self.cle_publique_fin = self.data[6:12]
+        self.crc32 = self.data[12:16]
 
     def __str__(self):
         return 'Paquet cle appareil fin: %s' % (
@@ -230,6 +234,7 @@ class PaquetCleAppareil2(PaquetPayload):
     def assembler(self):
         return [{
             'cle_publique_fin': self.cle_publique_fin,
+            'crc32': self.crc32,
         }] 
         
         
@@ -571,6 +576,7 @@ class AssembleurPaquets:
         # Preparer lecture senseurs
         senseurs = dict()
         cle_publique = list()
+        crc32_cle_publique = None
         for paquets_assembles in [s.assembler() for s in liste_ordonnee]:
             if self.__iv_confirme is False and self.__iv is not None:
                 # On a recu un paquet apres le IV, l'appareil sait qu'on l'a recu
@@ -584,6 +590,7 @@ class AssembleurPaquets:
                         
                     if lecture.get('cle_publique_fin'):
                         cle_publique.append(lecture['cle_publique_fin'])
+                        crc32_cle_publique = lecture['crc32']
 
                     if lecture.get('type') and lecture.get('nom'):
                         # Ajouter timestamp
@@ -606,6 +613,19 @@ class AssembleurPaquets:
         if len(cle_publique) == 2:
             cle_combinee = bytes(cle_publique[0] + cle_publique[1])
             self.__logger.debug("Cle publique senseur : %s" % cle_combinee)
+            
+            # Valider la cle avec le CRC32
+            calcul_crc32 = crc32(cle_combinee) & 0xffffffff
+            crc32_recu_int = unpack('I', crc32_cle_publique)[0]
+            self.__logger.debug(
+                "CRC32 cle calcule %s, recu %s" % (
+                    hex(calcul_crc32), 
+                    hex(crc32_recu_int)
+                )
+            )
+            if calcul_crc32 != crc32_recu_int:
+                raise Exception("CRC32 cle different de celui recu")
+            
             dict_message['cle_publique'] = cle_combinee
 
         paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
