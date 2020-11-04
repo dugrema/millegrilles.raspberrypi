@@ -3,7 +3,6 @@ import datetime
 import logging
 
 from struct import pack, unpack
-from zlib import crc32
 
 # from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -614,19 +613,20 @@ class AssembleurPaquets:
             cle_combinee = bytes(cle_publique[0] + cle_publique[1])
             self.__logger.debug("Cle publique senseur : %s" % cle_combinee)
             
-            # Valider la cle avec le CRC32
-            calcul_crc32 = crc32(cle_combinee) & 0xffffffff
-            crc32_recu_int = unpack('I', crc32_cle_publique)[0]
-            self.__logger.debug(
-                "CRC32 cle calcule %s, recu %s" % (
-                    hex(calcul_crc32), 
-                    hex(crc32_recu_int)
-                )
-            )
-            if calcul_crc32 != crc32_recu_int:
-                raise Exception("CRC32 cle different de celui recu")
-            
+            # # Valider la cle avec le CRC32
+            # calcul_crc32 = crc32(cle_combinee) & 0xffffffff
+            # crc32_recu_int = unpack('I', crc32_cle_publique)[0]
+            # self.__logger.debug(
+            #     "CRC32 cle calcule %s, recu %s" % (
+            #         hex(calcul_crc32),
+            #         hex(crc32_recu_int)
+            #     )
+            # )
+            # if calcul_crc32 != crc32_recu_int:
+            #     raise Exception("CRC32 cle different de celui recu")
+
             dict_message['cle_publique'] = cle_combinee
+            dict_message['crc32'] = crc32_cle_publique
 
         paquet_ack = PaquetACKTransmission(self.__paquet0.from_node, self.__tag)
 

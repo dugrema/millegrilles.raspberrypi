@@ -21,6 +21,8 @@ import RPi.GPIO as GPIO
 
 from threading import Thread, Event, Lock
 from os import path, urandom, environ
+from zlib import crc32
+from struct import unpack
 
 import binascii
 import json
@@ -562,6 +564,18 @@ class NRF24Server:
         uuid_senseur = message['uuid_senseur']
         cle = message['cle_publique']
         self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
+
+        # Valider la cle avec le CRC32
+        calcul_crc32 = crc32(cle) & 0xffffffff
+        crc32_recu_int = unpack('I', cle)[0]
+        self.__logger.debug(
+            "CRC32 cle calcule %s, recu %s" % (
+                hex(calcul_crc32),
+                hex(crc32_recu_int)
+            )
+        )
+        if calcul_crc32 != crc32_recu_int:
+            raise Exception("CRC32 cle different de celui recu")
 
         # Conserver la cle publique de l'appareil pour reference future
         self.__reserve_dhcp.conserver_cle(binascii.unhexlify(uuid_senseur.encode('utf-8')), cle)
