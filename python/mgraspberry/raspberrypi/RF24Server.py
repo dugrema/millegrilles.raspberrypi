@@ -655,7 +655,8 @@ class ReserveDHCP:
         Conserver la cle publique d'un appareil
         """
         config_appareil = self.__node_id_by_uuid[uuid]
-        config_appareil['cle_publique'] = binascii.hexlify(cle_publique).decode('utf8')
+        if cle_publique is not None:
+            config_appareil['cle_publique'] = binascii.hexlify(cle_publique).decode('utf8')
         self.sauvegarder_fichier_dhcp()
 
     def get_node_id(self, uuid: bytes):
