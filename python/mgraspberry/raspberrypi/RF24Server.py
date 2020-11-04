@@ -32,8 +32,7 @@ import logging
 from mgraspberry.raspberrypi.Constantes import Constantes as ConstantesRPi
 from mgraspberry.raspberrypi import ProtocoleVersion9
 from mgraspberry.raspberrypi.ProtocoleVersion9 import VERSION_PROTOCOLE, \
-    AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, \
-    TypesMessages, PaquetReponseCleServeur1, PaquetReponseCleServeur2
+    AssembleurPaquets, Paquet0, PaquetDemandeDHCP, PaquetBeaconDHCP, PaquetReponseDHCP, TypesMessages
 
 
 class Constantes(ConstantesRPi):
@@ -65,7 +64,7 @@ class RadioThread:
     def __init__(self, stop_event: Event, type_env='prod'):
         """
         Environnements
-        :param idmg: IDMG de la MilleGrille
+        :param stop_event: IDMG de la MilleGrille
         :param type_env: prod, int ou dev
         """
         self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
@@ -122,7 +121,10 @@ class RadioThread:
                 self.__event_action.wait(0.25)
         finally:
             self.__logger.info("Arret de la radio")
-            radio.stopListening()
+            try:
+                self.__radio.stopListening()
+            except:
+                pass
             GPIO.cleanup()
 
     def recevoir(self, message):
@@ -155,37 +157,38 @@ class RadioThread:
             else:
                 # Le premier byte de l'adresse est le node_id
                 adresse = bytes([node_id]) + self.__adresse_reseau
+
+            adresse_str = str(binascii.hexlify(adresse))
                 
-            reponse = True
+            # reponse = True
             try:
                 self.__radio.openWritingPipe(adresse)
 
-                if not reponse:
-                    self.__logger.error("Erreur transmission vers : %s" % binascii.hexlify(adresse))
-                    break
+                # if not reponse:
+                #     self.__logger.error("Erreur transmission vers : %s" % binascii.hexlify(adresse))
+                #     break
                 
                 message = paquet.encoder()
-                self.__logger.debug("Transmission paquet nodeId:%d\n%s" % (
-                    paquet.node_id, binascii.hexlify(message).decode('utf8')))
+                self.__logger.debug("Transmission paquet nodeId:%d, adresse:%s\n%s" % (
+                    paquet.node_id, adresse_str, binascii.hexlify(message).decode('utf8')))
 
-                for essai in range(0, Constantes.TRANSMISSION_NB_ESSAIS):
-                    with self.__lock_radio:
-                        self.__radio.stopListening()
-                        # self.__logger.debug("Transmission paquet en cours")
-                        reponse = self.__radio.write(message)
-                        if reponse:
-                            # Transmission reussie
-                            self.__logger.debug("Transmission paquet OK")
-                            break
-                        self.__radio.startListening()
-                    self.__stop_event.wait(0.002)  # Wait 2ms between attemps
+                # for essai in range(0, Constantes.TRANSMISSION_NB_ESSAIS):
+                with self.__lock_radio:
+                    self.__radio.stopListening()
+                    # self.__logger.debug("Transmission paquet en cours")
+                    reponse = self.__radio.write(message)
+                    if reponse:
+                        # Transmission reussie
+                        self.__logger.debug("Transmission paquet OK (node_id: %s, adresse: %s)" % (node_id, adresse_str))
+                        # break
+                    self.__radio.startListening()
+                # self.__stop_event.wait(0.002)  # Wait 2ms between attemps
                 
                 if not reponse:
-                    self.__logger.debug("Transmission paquet ECHEC")
+                    self.__logger.debug("Transmission paquet ECHEC (node_id: %s, adresse: %s)" % (node_id, adresse_str))
                             
             except Exception:
-                self.__logger.exception("Erreur tranmission message vers %s" % str(adresse))
-                reponse = False
+                self.__logger.exception("Erreur tranmission message vers %s" % adresse_str)
             finally:
                 # S'assurer de redemarrer l'ecoute de la radio
                 self.__radio.startListening()
@@ -200,14 +203,14 @@ class RadioThread:
         self.__radio.setChannel(self.__channel)
         self.__radio.setDataRate(RF24.RF24_250KBPS)
         self.__radio.setPALevel(self.__radio_PA_level, False)  # Power Amplifier
-        self.__radio.setRetries(1, 5)
+        self.__radio.setRetries(1, 15)
         self.__radio.setAutoAck(1)
         self.__radio.setCRCLength(RF24.RF24_CRC_16)
 
-        addresseServeur = bytes(b'\x00\x00') + self.__adresse_serveur
-        addresseServeur = self.__formatAdresse(addresseServeur)
-        self.__radio.openReadingPipe(1, addresseServeur)
-        self.__logger.info("Address reading pipe 1: %s" % hex(addresseServeur))
+        addresse_serveur = bytes(b'\x00\x00') + self.__adresse_serveur
+        addresse_serveur = self.__formatAdresse(addresse_serveur)
+        self.__radio.openReadingPipe(1, addresse_serveur)
+        self.__logger.info("Address reading pipe 1: %s" % hex(addresse_serveur))
 
         # print("Radio details")
         # print( self.__radio.printDetails() )
@@ -217,7 +220,7 @@ class RadioThread:
 
         # Connecter IRQ pour reception paquets
         # Masquer TX OK et fail sur IRQ, juste garder payload ready
-        self.__radio.maskIRQ(True, True, False);
+        self.__radio.maskIRQ(True, True, False)
         GPIO.setup(Constantes.PIN_IRQ, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.add_event_detect(self.__radio_irq, GPIO.FALLING, callback=self.__process_network_messages)
     
@@ -381,9 +384,8 @@ class NRF24Server:
                 json.dump(configuration, fichier)
             self.__configuration = configuration
 
-        finally:
-            self.__traitement_radio.set_adresse_serveur(adresse_serveur)
-            self.__traitement_radio.set_adresse_reseau(adresse_reseau)
+        self.__traitement_radio.set_adresse_serveur(adresse_serveur)
+        self.__traitement_radio.set_adresse_reseau(adresse_reseau)
 
     # Starts thread and runs the process
     def start(self, callback_soumettre):
@@ -555,7 +557,7 @@ class NRF24Server:
             info_appareil['iv_candidat'] = iv
 
     def __ajouter_cle_appareil(self, node_id, message):
-        self.__logger.debug("Messages : %s"  % str(message))
+        self.__logger.debug("Messages : %s" % str(message))
         uuid_senseur = message['uuid_senseur']
         cle = message['cle_publique']
         self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
@@ -626,10 +628,15 @@ class NRF24Server:
 
 
 class ReserveDHCP:
+    """
+    Gestionnaire DHCP des appareils RF24
+    """
 
     def __init__(self, fichier_dhcp: str):
         self.__node_id_by_uuid = dict()
         self.__fichier_dhcp = fichier_dhcp
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
 
     def charger_fichier_dhcp(self):
         with open(self.__fichier_dhcp, 'r') as fichier:
@@ -654,9 +661,15 @@ class ReserveDHCP:
         """
         Conserver la cle publique d'un appareil
         """
-        config_appareil = self.__node_id_by_uuid[uuid]
-        if cle_publique is not None:
-            config_appareil['cle_publique'] = binascii.hexlify(cle_publique).decode('utf8')
+        try:
+            config_appareil = self.__node_id_by_uuid[uuid]
+        except KeyError:
+            config_appareil = dict()
+            self.__node_id_by_uuid[uuid] = config_appareil
+
+        config_appareil['cle_publique'] = binascii.hexlify(cle_publique).decode('utf8')
+
+        self.__logger.debug("UUID %s, cle publique = %s" % (binascii.hexlify(uuid), config_appareil['cle_publique']))
         self.sauvegarder_fichier_dhcp()
 
     def get_node_id(self, uuid: bytes):
@@ -677,18 +690,24 @@ class ReserveDHCP:
         return None
 
     def reserver(self, uuid: bytes):
-        node_id = self.get_node_id(uuid)
+        try:
+            info_node = self.__node_id_by_uuid[uuid]
+        except KeyError:
+            info_node = dict()
+            self.__node_id_by_uuid[uuid] = info_node
 
-        if node_id is None:
-            node_id = self._identifier_nouvelle_adresse()
+        try:
+            node_id = info_node['node_id']
+        except KeyError:
+            node_id = self.__identifier_nouvelle_adresse()
+            info_node['node_id'] = node_id
 
-        if node_id is not None:
-            self.__node_id_by_uuid[uuid] = {'node_id': node_id}
+            self.__logger.debug("UUID %s, reservation node id = %s" % (binascii.hexlify(uuid), node_id))
             self.sauvegarder_fichier_dhcp()
 
         return node_id
 
-    def _identifier_nouvelle_adresse(self):
+    def __identifier_nouvelle_adresse(self):
         """
         Donne la prochaine adresse disponible entre 2 et 254
         Adresse 0xff (255) est pour broadcast, tous les noeuds ecoutent
