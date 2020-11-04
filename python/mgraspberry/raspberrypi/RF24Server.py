@@ -562,12 +562,14 @@ class NRF24Server:
     def __ajouter_cle_appareil(self, node_id, message):
         self.__logger.debug("Messages : %s" % str(message))
         uuid_senseur = message['uuid_senseur']
+        uuid_senseur_bytes = binascii.unhexlify(uuid_senseur.encode('utf-8'))
         cle = message['cle_publique']
+        crc32_recu = message['crc32']
         self.__logger.debug("Recu cle publique appareil : %s" % binascii.hexlify(cle))
 
         # Valider la cle avec le CRC32
-        calcul_crc32 = crc32(cle) & 0xffffffff
-        crc32_recu_int = unpack('I', cle)[0]
+        calcul_crc32 = crc32(uuid_senseur_bytes + cle) & 0xffffffff
+        crc32_recu_int = unpack('I', crc32_recu)[0]
         self.__logger.debug(
             "CRC32 cle calcule %s, recu %s" % (
                 hex(calcul_crc32),
@@ -578,7 +580,7 @@ class NRF24Server:
             raise Exception("CRC32 cle different de celui recu")
 
         # Conserver la cle publique de l'appareil pour reference future
-        self.__reserve_dhcp.conserver_cle(binascii.unhexlify(uuid_senseur.encode('utf-8')), cle)
+        self.__reserve_dhcp.conserver_cle(uuid_senseur_bytes, cle)
         
         # Generer nouvelle cle ed25519 pour identifier cle partagee
         appareil_side = donna25519.PublicKey(cle)
