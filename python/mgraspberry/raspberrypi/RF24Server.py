@@ -40,7 +40,8 @@ class Constantes(ConstantesRPi):
     MG_CHANNEL_INT = 0x24
     MG_CHANNEL_DEV = 0x0c
 
-    ADDR_BROADCAST_DHCP = 0x290E92548B  # Adresse de broadcast du beacon
+    # ADDR_BROADCAST_DHCP = bytes([0x29, 0x0E, 0x92, 0x54, 0x8B])  # Adresse de broadcast du beacon
+    ADDR_BROADCAST_DHCP = bytes([0x8B, 0x54, 0x92, 0x0E, 0x29])  # Adresse de broadcast du beacon
 
     INTERVALLE_BEACON = 0.25
 
@@ -153,7 +154,7 @@ class RadioThread:
             # Determiner adresse de transmission
             node_id = paquet.node_id
             if node_id is None or isinstance(paquet, ProtocoleVersion9.PaquetReponseDHCP):
-                adresse = Constantes.ADDR_BROADCAST_DHCP
+                adresse = bytes(Constantes.ADDR_BROADCAST_DHCP)
             else:
                 # Le premier byte de l'adresse est le node_id
                 adresse = bytes([node_id]) + self.__adresse_reseau
@@ -714,7 +715,14 @@ class ReserveDHCP:
         :return:
         """
 
-        node_id_list = [config['node_id'] for config in self.__node_id_by_uuid.values()]
+        node_id_list = list()
+        for config in self.__node_id_by_uuid.values():
+            try:
+                node_id_list.append(config['node_id'])
+            except KeyError:
+                pass
+
+        # node_id_list = [config['node_id'] for config in self.__node_id_by_uuid.values()]
         for node_id in range(2, 254):
             if node_id not in node_id_list:
                 return node_id

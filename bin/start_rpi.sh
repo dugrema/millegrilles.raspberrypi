@@ -7,7 +7,7 @@ export PYTHONPATH=$GIT_PATH/millegrilles.consignation.python:$GIT_PATH/millegril
 
 export MG_NOEUD_ID="de85cd60-39d6-454e-b903-e5381f0634e7"
 export MG_IDMG="QME8SjhaCFySD9qBt1AikQ1U7WxieJY2xDg2JCMczJST"
-export RF24_PA=3
+export RF24_PA=0
 
 CERTS=/home/mathieu/mgdev/certs
 export MG_MQ_PORT=5673
