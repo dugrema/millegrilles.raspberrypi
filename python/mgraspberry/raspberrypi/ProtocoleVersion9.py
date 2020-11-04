@@ -1164,12 +1164,13 @@ class PaquetReponseCleServeur2(PaquetTransmission):
     def __init__(self, node_id, clePubliqueServeur):
         super().__init__(TypesMessages.MSG_TYPE_CLE_SERVEUR_2)
         self.__clePubliqueServeur = clePubliqueServeur[28:32]
-        self.__crc32 = self.__calculer_crc32_cle()
+        self.__crc32 = self.__calculer_crc32_cle(clePubliqueServeur)
         self.node_id = node_id
 
-    def __calculer_crc32_cle(self):
+    def __calculer_crc32_cle(self, clePubliqueServeur):
         # Valider la cle avec le CRC32
-        calcul_crc32 = crc32(self.__clePubliqueServeur) & 0xffffffff
+        # calcul_crc32 = crc32(self.__clePubliqueServeur) & 0xffffffff
+        calcul_crc32 = crc32(clePubliqueServeur)
         return pack('I', calcul_crc32)
 
     def encoder(self):
