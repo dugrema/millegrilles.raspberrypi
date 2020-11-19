@@ -1,4 +1,4 @@
-FROM docker.maceroc.com/millegrilles_senseurspassifs_base:armv7l_1.35.0
+FROM docker.maceroc.com/millegrilles_senseurspassifs_base:aarch64_1.35.0
 
 ENV MG_CONFIG=/opt/millegrilles/config \
     MG_MQ_SSL=on \
