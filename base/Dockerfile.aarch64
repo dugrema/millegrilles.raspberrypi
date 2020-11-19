@@ -30,7 +30,7 @@ RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
     \
     cd /opt/src/tmp/Adafruit_Python_BMP && \
     python3 setup.py install && \
-    \
+	\
     cd / \
     apt remove -y libboost1.67-dev python3-setuptools && \
     rm -rf /var/apt/cache/* /var/lib/apt/lists/* && \

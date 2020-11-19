@@ -4,6 +4,8 @@ import time
 import logging
 import datetime 
 
+from threading import Event, Thread
+
 from mgdomaines.appareils.AffichagesPassifs import AffichageAvecConfiguration
 
 import smbus  # Installer sur RPi (bus TWI)
@@ -144,3 +146,81 @@ class AffichagePassifLCD2Lignes(AffichageAvecConfiguration):
     def toggle_lcd_onoff(self, valeur: str):
         super().toggle_lcd_onoff(valeur)
         self._lcd_handler.set_backlight(self._affichage_actif)
+
+
+class SenseurBMP180:
+
+    def __init__(self, uuid_senseur, pin=24, intervalle_lectures=15):
+        self._uuid_senseur = uuid_senseur
+        self._intervalle_lectures = intervalle_lectures
+        self._callback_soumettre = None
+        self._stop_event = Event()
+        self._thread = None
+
+        self.__logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
+
+        from Adafruit_BMP import BMP085
+        self.__sensor = BMP085.BMP085()
+
+        self._stop_event.set()
+
+    def lire(self):
+        temperature = self.__sensor.read_temperature()
+        pression = self.__sensor.read_sealevel_pressure()
+
+        self.__logger.debug("Lecture BMP180 : temperature = %s, pression = %s" % (temperature, pression))
+
+        try:
+            temperature_round = round(temperature, 1)
+        except:
+            temperature_round = None
+
+        try:
+            pression_round = round(pression / float(1000), 2)
+        except:
+            pression_round = None
+
+        timestamp = int(datetime.datetime.now().timestamp())
+
+        dict_message = {
+            'uuid_senseur': self._uuid_senseur,
+            'senseurs': {
+                'bmp180/1/temperature': {
+                    'valeur': temperature_round,
+                    'timestamp': timestamp,
+                    'type': 'temperature',
+                },
+                'bmp180/1/pression': {
+                    'valeur': pression_round,
+                    'timestamp': timestamp,
+                    'type': 'pression',
+                }
+            }
+        }
+
+        # Verifier que les valeurs ne sont pas erronees
+        if 95.0 <= pression_round <= 105.0 and -50 < temperature < 50:
+            self._callback_soumettre(dict_message)
+        else:
+            self.__logger.warning("ThermometreAdafruitGPIO: Erreur de lecture DHT erronnee, valeurs hors limites: %s" % str(dict_message))
+
+    def start(self, callback_soumettre):
+        self._callback_soumettre = callback_soumettre
+        self._stop_event.clear()
+
+        # Demarrer thread
+        self._thread = Thread(target=self.run)
+        self._thread.start()
+        self.__logger.info("ThermometreAdafruitGPIO: thread started successfully")
+
+    def fermer(self):
+        self._stop_event.set()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            try:
+                self.lire()
+            except:
+                self.__logger.exception("ThermometreAdafruitGPIO: Erreur lecture AM2302")
+            finally:
+                self._stop_event.wait(self._intervalle_lectures)

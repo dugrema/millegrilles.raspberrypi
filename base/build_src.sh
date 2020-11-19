@@ -27,3 +27,10 @@ if [ -d git/Adafruit_Python_DHT ]; then
 else
     git -C git/ clone --single-branch https://github.com/adafruit/Adafruit_Python_DHT.git
 fi
+
+if [ -d git/Adafruit_Python_BMP ]; then
+	echo Pull Adafruit_Python_BMP
+    git -C git/Adafruit_Python_BMP pull
+else
+    git -C git/ clone --single-branch https://github.com/adafruit/Adafruit_Python_BMP.git
+fi

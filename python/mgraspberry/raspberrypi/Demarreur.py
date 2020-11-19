@@ -32,6 +32,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._affichage_lcd = None
         self._rf24_server = None
         self._am2302 = None
+        self._bmp180 = None
 
         # Liste d'appareils (modules) charges
         self._appareils = list()
@@ -64,6 +65,10 @@ class DemarreurRaspberryPi(DemarreurNoeud):
             required=False, help="Active le senseur AM2302 sur pin (en parametre)"
         )
         self._parser.add_argument(
+            '--bmp180', action="store_true", required=False,
+            help="Active le senseur de temperature et pression BMP180"
+        )
+        self._parser.add_argument(
             '--timezone', type=str, required=False,
             help="Timezone pytz pour l'horloge, ex: America/Halifax"
         )
@@ -94,21 +99,24 @@ class DemarreurRaspberryPi(DemarreurNoeud):
                 self.inclure_lcd()
             except Exception as erreur_lcd:
                 self._logger.exception("Erreur chargement ecran LCD: %s" % str(erreur_lcd))
-                # traceback.print_exc()
 
         if self._args.rf24master:
             try:
                 self.inclure_nrf24l01()
             except Exception as erreur_nrf24:
                 self._logger.exception("Erreur chargement hub nRF24L01: %s" % str(erreur_nrf24))
-                # traceback.print_exc()
 
         if self._args.am2302:
             try:
                 self.inclure_am2302()
             except Exception as erreur_nrf24:
                 self._logger.exception("Erreur chargement AM2302 sur pin %s: %s" % (str(self._args.am2302), str(erreur_nrf24)))
-                # traceback.print_exc()
+
+        if self._args.bmp180:
+            try:
+                self.inclure_bmp180()
+            except Exception as erreur_bmp180:
+                self._logger.exception("Erreur chargement BMP180 sur pin %s: %s" % (str(self._args.bmp180), str(erreur_bmp180)))
 
     def fermer(self):
         super().fermer()
@@ -150,6 +158,16 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         self._am2302 = ThermometreAdafruitGPIO(uuid_senseur, pin=pin)
         self._am2302.start(self.transmettre_lecture_callback)
         self._appareils.append(self._am2302)
+        self._chargement_reussi = True
+
+    def inclure_bmp180(self):
+        self._logger.info("Activer BMP180")
+        from mgraspberry.raspberrypi.RPiTWI import SenseurBMP180
+        
+        uuid_senseur = self._noeud_id + ':BMP180'
+        self._bmp180 = SenseurBMP180(uuid_senseur)
+        self._bmp180.start(self.transmettre_lecture_callback)
+        self._appareils.append(self._bmp180)
         self._chargement_reussi = True
 
 
