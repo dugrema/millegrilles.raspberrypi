@@ -1,6 +1,8 @@
-FROM docker.maceroc.com/millegrilles_python_base:1.39.2
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.39.3
 
 ADD . /opt/src
+
+USER root
 
 RUN cd /opt/src/python && \
     pip3 install -r requirements.txt && \
