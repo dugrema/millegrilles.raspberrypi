@@ -1,4 +1,4 @@
-FROM docker.maceroc.com/millegrilles_consignation_python_main:1.40.0
+FROM docker.maceroc.com/millegrilles_consignation_python_main:1.40.1
 
 USER root
 
