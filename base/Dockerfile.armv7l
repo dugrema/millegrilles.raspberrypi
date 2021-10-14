@@ -5,9 +5,8 @@ USER root
 COPY git/ /opt/src/tmp/
 COPY requirements.txt .
 
-RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
-	\
-    pip3 install -r requirements.txt && \
+#RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
+RUN pip3 install -r requirements.txt && \
     \
     mkdir -p /opt/millegrilles/config && \
     \
@@ -29,6 +28,6 @@ RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
     python3 setup.py install && \
     \
     cd / \
-    apt remove -y libboost1.67-dev python3-setuptools && \
+    apt remove -y libboost1.67-dev && \
     rm -rf /var/apt/cache/* /var/lib/apt/lists/* && \
     rm -rf /opt/src
