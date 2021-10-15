@@ -155,6 +155,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
 
 # **** MAIN ****
 def main():
+    print("Demarrage senseurs raspberrypi pour MilleGrilles")
     try:
         demarreur.parse()
         demarreur.executer_daemon_command()
