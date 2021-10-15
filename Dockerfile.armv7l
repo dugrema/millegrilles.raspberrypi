@@ -10,19 +10,19 @@ USER root
 
 ADD . /opt/src
 
-RUN cd /opt/src/python && \
-    python3 setup.py install && \
-    \
-    mkdir -p /opt/millegrilles/config && \
-    \
-    rm -rf /opt/src
-
-#RUN cd /opt/src/git/millegrilles.consignation.python && \
-#    python3 setup.py install && \
-#    \
-#    cd /opt/src/python && \
+#RUN cd /opt/src/python && \
 #    python3 setup.py install && \
 #    \
 #    mkdir -p /opt/millegrilles/config && \
 #    \
 #    rm -rf /opt/src
+
+RUN cd /opt/src/millegrilles.consignation.python && \
+    python3 setup.py install && \
+    \
+    cd /opt/src/python && \
+    python3 setup.py install && \
+    \
+    mkdir -p /opt/millegrilles/config && \
+    \
+    rm -rf /opt/src
