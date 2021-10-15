@@ -87,6 +87,7 @@ class DemarreurRaspberryPi(DemarreurNoeud):
         if self._args.debug:
             logging.getLogger('mgraspberry').setLevel(logging.DEBUG)
             logging.getLogger('mgdomaines').setLevel(logging.DEBUG)
+            logging.getLogger('noeuds').setLevel(logging.DEBUG)
 
         # Charger modules specifiques au raspberrypi.
         if self._args.lcdsenseurs:
