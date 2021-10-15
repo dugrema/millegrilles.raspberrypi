@@ -1,0 +1,3 @@
+[submodule "millegrilles.consignation.python"]
+	path = millegrilles.consignation.python
+	url = ssh://git.maceroc.com/git/millegrilles.consignation.python
