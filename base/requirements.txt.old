@@ -1,3 +1,4 @@
 donna25519
 pycryptodome
 smbus
+rpi.gpio
