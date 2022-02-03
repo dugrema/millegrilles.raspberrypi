@@ -1,8 +1,11 @@
 #!/bin/bash
+set -e
+
 TMP_FOLDER=/opt/src/tmp
 GIT_FOLDER=$TMP_FOLDER/git
-BASE_FOLDER=$TMP_FOLDER/rpi/base
+BASE_FOLDER=$TMP_FOLDER
 
+LIBBOOST_VERSION=libboost-python1.74.0
 LIBBOOST_DEV_VERSION=libboost-python1.74-dev
 LIBBOOST=/usr/lib/aarch64-linux-gnu
 # libboost-python1.74.0
@@ -12,7 +15,7 @@ pip3 install -r $BASE_FOLDER/requirements.txt
 mkdir -p /opt/millegrilles/config
 
 apt update
-apt install -y $LIBBOOST_DEV_VERSION \
+apt install -y $LIBBOOST_VERSION $LIBBOOST_DEV_VERSION \
                libxml2 libxmlsec1 \
                rpi.gpio-common python3-rpi.gpio \
                python3-smbus python3-cffi python3-setuptools
@@ -26,8 +29,17 @@ ln -s /usr/lib/python3/dist-packages/RPi /usr/local/lib/python3.9/site-packages/
 
 echo "Installer RF24"
 cd $GIT_FOLDER/RF24
+./configure
+cp Makefile.inc Makefile.inc.old
+true || cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc
+echo "CPUFLAGS=" >> Makefile.inc
+echo "CFLAGS=-Ofast -Wall -pthread" >> Makefile.inc
+echo Makefile.inc modifie
+cat Makefile.inc
 make install
+echo "Installation module pyRF24"
 cd pyRF24
+python3 setup.py build
 python3 setup.py install
 
 echo "Installer Adafruit Python"

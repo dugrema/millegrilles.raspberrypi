@@ -2,7 +2,7 @@ FROM python:3.9
 
 USER root
 
-COPY git/ /opt/src/tmp/
-COPY requirements.txt setup.sh .
+COPY git/ /opt/src/tmp/git/
+COPY requirements.txt setup.sh /opt/src/tmp/
 
-RUN setup.sh
+RUN /opt/src/tmp/setup.sh
