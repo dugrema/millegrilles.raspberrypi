@@ -1,0 +1,28 @@
+FROM docker.maceroc.com/millegrilles_senseurspassifs_base:armv7l_1.45.0
+
+ENV MG_CONFIG=/opt/millegrilles/config \
+    MG_MQ_SSL=on \
+    MG_MQ_AUTH_CERT=on \
+    MG_MQ_EXCHANGE_DEFAUT=2.prive
+
+VOLUME /opt/millegrilles/config
+USER root
+
+ADD . /opt/src
+
+#RUN cd /opt/src/python && \
+#    python3 setup.py install && \
+#    \
+#    mkdir -p /opt/millegrilles/config && \
+#    \
+#    rm -rf /opt/src
+
+RUN cd /opt/src/millegrilles.consignation.python && \
+    python3 setup.py install && \
+    \
+    cd /opt/src/python && \
+    python3 setup.py install && \
+    \
+    mkdir -p /opt/millegrilles/config && \
+    \
+    rm -rf /opt/src

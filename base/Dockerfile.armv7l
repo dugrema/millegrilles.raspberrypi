@@ -2,7 +2,7 @@ FROM docker.maceroc.com/millegrilles_consignation_python_main:1.46.0
 
 USER root
 
-COPY git/ /opt/src/tmp/
+COPY git/ /opt/src/tmp/git
 COPY requirements.txt .
 
 #RUN export http_proxy=http://fs2.maple.maceroc.com:8000 && \
