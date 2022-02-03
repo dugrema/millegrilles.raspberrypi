@@ -7,6 +7,7 @@ BASE_FOLDER=$TMP_FOLDER
 
 LIBBOOST_VERSION=libboost-python1.74.0
 LIBBOOST_DEV_VERSION=libboost-python1.74-dev
+LIBBOOST_PYTHON_DEV_VERSION=libboost-python1.74-dev
 LIBBOOST=/usr/lib/aarch64-linux-gnu
 # libboost-python1.74.0
 
@@ -15,7 +16,7 @@ pip3 install -r $BASE_FOLDER/requirements.txt
 mkdir -p /opt/millegrilles/config
 
 apt update
-apt install -y $LIBBOOST_VERSION $LIBBOOST_DEV_VERSION \
+apt install -y $LIBBOOST_VERSION $LIBBOOST_DEV_VERSION $LIBBOOST_PYTHON_DEV_VERSION \
                libxml2 libxmlsec1 \
                rpi.gpio-common python3-rpi.gpio \
                python3-smbus python3-cffi python3-setuptools
@@ -51,6 +52,6 @@ cd $GIT_FOLDER/arduinolibs/libraries/CryptoLW/python
 python3 setup.py install
 
 cd /
-apt remove -y $LIBBOOST_DEV_VERSION
+apt remove -y $LIBBOOST_DEV_VERSION $LIBBOOST_PYTHON_DEV_VERSION
 rm -rf /var/apt/cache/* /var/lib/apt/lists/*
 #rm -rf /opt/src
