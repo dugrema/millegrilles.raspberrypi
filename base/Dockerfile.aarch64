@@ -1,8 +1,11 @@
 FROM python:3.9
 
 USER root
+WORKDIR /opt/millegrilles/dist
 
 COPY git/ /opt/src/tmp/git/
 COPY requirements.txt setup.sh /opt/src/tmp/
 
 RUN /opt/src/tmp/setup.sh
+
+ENTRYPOINT ["python3"]

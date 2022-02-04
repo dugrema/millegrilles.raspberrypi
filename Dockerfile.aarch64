@@ -5,7 +5,9 @@ ENV MG_CONFIG=/opt/millegrilles/config \
     MG_MQ_AUTH_CERT=on \
     MG_MQ_EXCHANGE_DEFAUT=2.prive \
     SRC_FOLDER=/opt/src \
-    BUILD_FOLDER=/opt/src/millegrilles.consignation.python
+    BUILD_FOLDER=/opt/src/millegrilles.consignation.python \
+    BUNDLE_FOLDER=/opt/millegrilles/dist \
+    PYTHONPATH=/opt/millegrilles/dist
 
 VOLUME /opt/millegrilles/config
 USER root
