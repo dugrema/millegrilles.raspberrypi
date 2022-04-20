@@ -64,11 +64,15 @@ cat Makefile.inc
 
 # Remplacer flags pour build 64bit:  https://github.com/nRF24/RF24/issues/642
 echo "Ajuster makefile pour 64 bit (flags)"
-cp Makefile.inc Makefile.inc.old
-true || cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc
+mv Makefile.inc Makefile.inc.old
+#true | cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc
+# cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc || true
+cat Makefile.inc.old | grep -e "^CPUFLAGS" -e "^CFLAGS" -v > Makefile.inc
 echo "CPUFLAGS=" >> Makefile.inc
 echo "CFLAGS=-Ofast -Wall -pthread" >> Makefile.inc
 cat Makefile.inc
+
+echo "**********\nRF24 pret pour make\n**********"
 
 # Build
 make
