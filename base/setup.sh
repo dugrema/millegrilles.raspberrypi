@@ -28,17 +28,23 @@ ln -sf $LIBBOOST/libboost_python3?.so $LIBBOOST/libboost_python3.so
 # Map packages dist
 ln -s /usr/lib/python3/dist-packages/RPi /usr/local/lib/python3.9/site-packages/RPi
 
+echo "Installer pigpio"
+cd $GIT_FOLDER/pigpio
+make
+make install
+
 echo "Installer RF24"
 cd $GIT_FOLDER/RF24
 ./configure
-cp Makefile.inc Makefile.inc.old
-true || cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc
+mv Makefile.inc Makefile.inc.old
+cat Makefile.inc.old | grep -e "^CPUFLAGS" -e "^CFLAGS" -v > Makefile.inc
+## true || cat Makefile.inc | grep -v "CPUFLAGS=" | grep -v "CFLAGS=" > Makefile.inc
 echo "CPUFLAGS=" >> Makefile.inc
 echo "CFLAGS=-Ofast -Wall -pthread" >> Makefile.inc
-echo Makefile.inc modifie
+#echo Makefile.inc modifie
 cat Makefile.inc
 make install
-echo "Installation module pyRF24"
+#echo "Installation module pyRF24"
 cd pyRF24
 python3 setup.py build
 python3 setup.py install

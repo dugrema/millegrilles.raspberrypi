@@ -3,7 +3,7 @@ set -e
 
 echo "Nom build : $NAME"
 
-GIT_REP=~/git
+GIT_REP=`realpath ./git`
 LIBBOOST=/usr/lib/aarch64-linux-gnu
 
 source image_info.txt
@@ -46,13 +46,21 @@ else
     git -C $GIT_REP/ clone --single-branch https://github.com/adafruit/Adafruit_Python_DHT.git
 fi
 
+if [ -d $GIT_REP/pigpio ]; then
+	echo Pull pigpio
+    git -C $GIT_REP/pigpio pull
+else
+    git -C $GIT_REP/ clone --single-branch https://github.com/joan2937/pigpio.git
+fi
+
+
 
 # Builds
 echo "Build arduinolibs"
 cd $GIT_REP/arduinolibs/libraries/CryptoLW/python
 sudo python3 setup.py install
 
-echo "Build Adafruit"
+echo "Build Adafruit Python DHT"
 cd $GIT_REP/Adafruit_Python_DHT
 sudo python3 setup.py install
 
